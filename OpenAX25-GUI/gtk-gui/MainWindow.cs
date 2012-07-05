@@ -3,10 +3,10 @@
 
 public partial class MainWindow
 {
-	private global::Gtk.Notebook notebook1;
-	private global::Gtk.ScrolledWindow scrolledwindow2;
-	private global::Gtk.TextView textview2;
-	private global::Gtk.Label label1;
+	private global::Gtk.Notebook mainNotebook;
+	private global::Gtk.ScrolledWindow shellWindow;
+	private global::Gtk.TextView shellTextView;
+	private global::Gtk.Label shellPageLabel;
 	
 	protected virtual void Build ()
 	{
@@ -17,28 +17,30 @@ public partial class MainWindow
 		this.WindowPosition = ((global::Gtk.WindowPosition)(4));
 		this.AllowShrink = true;
 		// Container child MainWindow.Gtk.Container+ContainerChild
-		this.notebook1 = new global::Gtk.Notebook ();
-		this.notebook1.CanFocus = true;
-		this.notebook1.Name = "notebook1";
-		this.notebook1.CurrentPage = 0;
-		// Container child notebook1.Gtk.Notebook+NotebookChild
-		this.scrolledwindow2 = new global::Gtk.ScrolledWindow ();
-		this.scrolledwindow2.CanFocus = true;
-		this.scrolledwindow2.Name = "scrolledwindow2";
-		this.scrolledwindow2.ShadowType = ((global::Gtk.ShadowType)(1));
-		// Container child scrolledwindow2.Gtk.Container+ContainerChild
-		this.textview2 = new global::Gtk.TextView ();
-		this.textview2.CanFocus = true;
-		this.textview2.Name = "textview2";
-		this.scrolledwindow2.Add (this.textview2);
-		this.notebook1.Add (this.scrolledwindow2);
+		this.mainNotebook = new global::Gtk.Notebook ();
+		this.mainNotebook.CanFocus = true;
+		this.mainNotebook.Name = "mainNotebook";
+		this.mainNotebook.CurrentPage = 0;
+		// Container child mainNotebook.Gtk.Notebook+NotebookChild
+		this.shellWindow = new global::Gtk.ScrolledWindow ();
+		this.shellWindow.CanFocus = true;
+		this.shellWindow.Name = "shellWindow";
+		this.shellWindow.ShadowType = ((global::Gtk.ShadowType)(1));
+		// Container child shellWindow.Gtk.Container+ContainerChild
+		this.shellTextView = new global::Gtk.TextView ();
+		this.shellTextView.TooltipMarkup = "Window for command entry";
+		this.shellTextView.CanFocus = true;
+		this.shellTextView.Events = ((global::Gdk.EventMask)(2048));
+		this.shellTextView.Name = "shellTextView";
+		this.shellWindow.Add (this.shellTextView);
+		this.mainNotebook.Add (this.shellWindow);
 		// Notebook tab
-		this.label1 = new global::Gtk.Label ();
-		this.label1.Name = "label1";
-		this.label1.LabelProp = global::Mono.Unix.Catalog.GetString ("Text");
-		this.notebook1.SetTabLabel (this.scrolledwindow2, this.label1);
-		this.label1.ShowAll ();
-		this.Add (this.notebook1);
+		this.shellPageLabel = new global::Gtk.Label ();
+		this.shellPageLabel.Name = "shellPageLabel";
+		this.shellPageLabel.LabelProp = global::Mono.Unix.Catalog.GetString ("Shell");
+		this.mainNotebook.SetTabLabel (this.shellWindow, this.shellPageLabel);
+		this.shellPageLabel.ShowAll ();
+		this.Add (this.mainNotebook);
 		if ((this.Child != null)) {
 			this.Child.ShowAll ();
 		}
@@ -46,5 +48,6 @@ public partial class MainWindow
 		this.DefaultHeight = 429;
 		this.Show ();
 		this.DeleteEvent += new global::Gtk.DeleteEventHandler (this.OnDeleteEvent);
+		this.shellTextView.KeyReleaseEvent += new global::Gtk.KeyReleaseEventHandler (this.OnShellTextViewKeyReleaseEvent);
 	}
 }

@@ -15,28 +15,31 @@
     <property name="AllowShrink">True</property>
     <signal name="DeleteEvent" handler="OnDeleteEvent" />
     <child>
-      <widget class="Gtk.Notebook" id="notebook1">
+      <widget class="Gtk.Notebook" id="mainNotebook">
         <property name="MemberName" />
         <property name="CanFocus">True</property>
         <property name="CurrentPage">0</property>
         <child>
-          <widget class="Gtk.ScrolledWindow" id="scrolledwindow2">
+          <widget class="Gtk.ScrolledWindow" id="shellWindow">
             <property name="MemberName" />
             <property name="CanFocus">True</property>
             <property name="ShadowType">In</property>
             <child>
-              <widget class="Gtk.TextView" id="textview2">
+              <widget class="Gtk.TextView" id="shellTextView">
                 <property name="MemberName">textBox</property>
+                <property name="Tooltip" translatable="yes">Window for command entry</property>
                 <property name="CanFocus">True</property>
+                <property name="Events">KeyReleaseMask</property>
                 <property name="Text" translatable="yes" />
+                <signal name="KeyReleaseEvent" handler="OnShellTextViewKeyReleaseEvent" />
               </widget>
             </child>
           </widget>
         </child>
         <child>
-          <widget class="Gtk.Label" id="label1">
+          <widget class="Gtk.Label" id="shellPageLabel">
             <property name="MemberName">mainNotebook</property>
-            <property name="LabelProp" translatable="yes">Text</property>
+            <property name="LabelProp" translatable="yes">Shell</property>
           </widget>
           <packing>
             <property name="type">tab</property>
