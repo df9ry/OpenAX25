@@ -26,8 +26,8 @@ using System.Runtime.CompilerServices;
 // Information about this assembly is defined by the following attributes. 
 // Change them to the values specific to your project.
 
-[assembly: AssemblyTitle("OpenAX25-GUI")]
-[assembly: AssemblyDescription("GUI for OpenAX25")]
+[assembly: AssemblyTitle("OpenAX25-KISS")]
+[assembly: AssemblyDescription("KISS interface for OpenAX25")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Ham Radio Community")]
 [assembly: AssemblyProduct("")]

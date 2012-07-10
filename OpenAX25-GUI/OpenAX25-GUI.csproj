@@ -52,6 +52,7 @@
     <Compile Include="gtk-gui\MainWindow.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="SamplePacket.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
@@ -63,4 +64,14 @@
       </Properties>
     </MonoDevelop>
   </ProjectExtensions>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenAX25-KISS\OpenAX25-KISS.csproj">
+      <Project>{870854DE-4C27-433A-A502-E834FC601BE1}</Project>
+      <Name>OpenAX25-KISS</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">
+      <Project>{8AC31167-8B8E-461B-A150-9EF4612002F0}</Project>
+      <Name>OpenAX25-Contracts</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

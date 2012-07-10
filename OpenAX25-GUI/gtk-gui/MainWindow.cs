@@ -7,6 +7,9 @@ public partial class MainWindow
 	private global::Gtk.ScrolledWindow shellWindow;
 	private global::Gtk.TextView shellTextView;
 	private global::Gtk.Label shellPageLabel;
+	private global::Gtk.ScrolledWindow monitorWindow;
+	private global::Gtk.TextView monitorView;
+	private global::Gtk.Label monitorPageLabel;
 	
 	protected virtual void Build ()
 	{
@@ -20,7 +23,7 @@ public partial class MainWindow
 		this.mainNotebook = new global::Gtk.Notebook ();
 		this.mainNotebook.CanFocus = true;
 		this.mainNotebook.Name = "mainNotebook";
-		this.mainNotebook.CurrentPage = 0;
+		this.mainNotebook.CurrentPage = 1;
 		// Container child mainNotebook.Gtk.Notebook+NotebookChild
 		this.shellWindow = new global::Gtk.ScrolledWindow ();
 		this.shellWindow.CanFocus = true;
@@ -40,6 +43,25 @@ public partial class MainWindow
 		this.shellPageLabel.LabelProp = global::Mono.Unix.Catalog.GetString ("Shell");
 		this.mainNotebook.SetTabLabel (this.shellWindow, this.shellPageLabel);
 		this.shellPageLabel.ShowAll ();
+		// Container child mainNotebook.Gtk.Notebook+NotebookChild
+		this.monitorWindow = new global::Gtk.ScrolledWindow ();
+		this.monitorWindow.Name = "monitorWindow";
+		this.monitorWindow.ShadowType = ((global::Gtk.ShadowType)(1));
+		// Container child monitorWindow.Gtk.Container+ContainerChild
+		this.monitorView = new global::Gtk.TextView ();
+		this.monitorView.CanFocus = true;
+		this.monitorView.Name = "monitorView";
+		this.monitorView.Editable = false;
+		this.monitorWindow.Add (this.monitorView);
+		this.mainNotebook.Add (this.monitorWindow);
+		global::Gtk.Notebook.NotebookChild w4 = ((global::Gtk.Notebook.NotebookChild)(this.mainNotebook [this.monitorWindow]));
+		w4.Position = 1;
+		// Notebook tab
+		this.monitorPageLabel = new global::Gtk.Label ();
+		this.monitorPageLabel.Name = "monitorPageLabel";
+		this.monitorPageLabel.LabelProp = global::Mono.Unix.Catalog.GetString ("Monitor");
+		this.mainNotebook.SetTabLabel (this.monitorWindow, this.monitorPageLabel);
+		this.monitorPageLabel.ShowAll ();
 		this.Add (this.mainNotebook);
 		if ((this.Child != null)) {
 			this.Child.ShowAll ();
