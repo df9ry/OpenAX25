@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -7,15 +7,26 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{870854DE-4C27-433A-A502-E834FC601BE1}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>OpenAX25KISS</RootNamespace>
-    <AssemblyName>OpenAX25-KISS</AssemblyName>
+    <RootNamespace>OpenAX25Kiss</RootNamespace>
+    <AssemblyName>OpenAX25-Kiss</AssemblyName>
+    <SourceAnalysisOverrideSettingsFile>C:\Users\knoeblta\AppData\Roaming\ICSharpCode/SharpDevelop4\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <SignAssembly>False</SignAssembly>
+    <DelaySign>False</DelaySign>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+    <DocumentationFile>bin\Debug\OpenAX25-KISS.xml</DocumentationFile>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <NoStdLib>False</NoStdLib>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RunCodeAnalysis>False</RunCodeAnalysis>
+    <RunSourceAnalysis>False</RunSourceAnalysis>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>Full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
@@ -28,19 +39,36 @@
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <StartAction>Project</StartAction>
+    <DefineConstants>DEBUG;</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <FileAlignment>4096</FileAlignment>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="L2_KISS.cs" />
-    <Compile Include="TxFrame.cs" />
+    <Compile Include="ChannelFactory.cs" />
+    <Compile Include="KissChannel.cs" />
+    <Compile Include="KissInterface.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">
       <Project>{8AC31167-8B8E-461B-A150-9EF4612002F0}</Project>
       <Name>OpenAX25-Contracts</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenAX25-Core\OpenAX25-Core.csproj">
+      <Project>{58FCBE2E-2F76-42A2-B054-81C779C5F933}</Project>
+      <Name>OpenAX25-Core</Name>
     </ProjectReference>
   </ItemGroup>
 </Project>

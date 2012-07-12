@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// L2DuplicateNameException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,16 +25,15 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// Description of L2DuplicateNameException.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public class L2DuplicateNameException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		public L2DuplicateNameException(string message) : base(message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,8 +41,7 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
+		public L2DuplicateNameException(string message, Exception innerException)
 			: base(message, innerException) {}
 	}
 }
-

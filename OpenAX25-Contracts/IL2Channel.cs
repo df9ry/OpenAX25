@@ -1,4 +1,4 @@
-//
+﻿//
 // IL2Channel.cs
 // 
 //  Author:
@@ -49,7 +49,17 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The properties.
 		/// </value>
-		IDictionary<string,object> Properties { get; }
+		IDictionary<string,string> Properties { get; }
+		
+		/// <summary>
+		/// Open the interface.
+		/// </summary>
+		void Open();
+		
+		/// <summary>
+		/// Close the interface.
+		/// </summary>
+		void Close();
 
 		/// <summary>
 		/// Gets the number of frames available in the rx queue.
@@ -57,7 +67,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The number of frames available in the rx queue.
 		/// </value>
-		Int32 RxSize { get; }
+		Int32 RXSize { get; }
 
 		/// <summary>
 		/// Gets the total number of octets available in the rx queue.
@@ -65,7 +75,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The total number of octets available in the rx queue.
 		/// </value>
-		Int64 RxOctets { get; }
+		Int64 RXOctets { get; }
 
 		/// <summary>
 		/// Gets or sets the total number of octets received. Overflow of this
@@ -74,7 +84,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The rx total number of octets.
 		/// </value>
-		Int64 RxTotal { get; set; }
+		Int64 RXTotal { get; set; }
 
 		/// <summary>
 		/// Gets or sets the number of rx errors occurred.
@@ -82,7 +92,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The number of rx errors occurred.
 		/// </value>
-		Int64 RxErrors { get; set; }
+		Int64 RXErrors { get; set; }
 
 		/// <summary>
 		/// Gets the number of frames waiting in the tx queue.
@@ -90,7 +100,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The number of frames waiting in the tx queue.
 		/// </value>
-		Int32 TxSize { get; }
+		Int32 TXSize { get; }
 
 		/// <summary>
 		/// Gets the total number of octets waiting in the tx queue.
@@ -98,7 +108,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The total number of octets waiting in the tx queue.
 		/// </value>
-		Int64 TxOctets { get; }
+		Int64 TXOctets { get; }
 
 		/// <summary>
 		/// Gets or sets the total number of octets transmitted. Overflow of this
@@ -107,7 +117,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The rx total number of octets.
 		/// </value>
-		Int64 TxTotal { get; set; }
+		Int64 TXTotal { get; set; }
 
 		/// <summary>
 		/// Gets or sets the number of tx errors occurred.
@@ -115,7 +125,7 @@ namespace OpenAX25Contracts
 		/// <value>
 		/// The number of tx errors occurred.
 		/// </value>
-		Int64 TxErrors { get; set; }
+		Int64 TXErrors { get; set; }
 
 		/// <summary>
 		/// Get frame from the receiver queue.
@@ -165,19 +175,19 @@ namespace OpenAX25Contracts
 		/// Resets the channel. The data link is closed and reopened. All pending
 		/// data is withdrawn.
 		/// </summary>
-		void ResetChannel();
+		void Reset();
 
 		/// <summary>
 		/// Resets the channel and clears the receiver buffer. Pending transmit data
 		/// is preserved.
 		/// </summary>
-		void ResetRxChannel();
+		void ResetRX();
 
 		/// <summary>
 		/// Resets the channel and clears the transmitter buffer. Pending received data
 		/// is presserved.
 		/// </summary>
-		void ResetTxChannel();
+		void ResetTX();
 	}
 }
 

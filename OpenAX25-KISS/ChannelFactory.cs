@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// ChannelFactory.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,29 +21,43 @@
 //
 
 using System;
+using System.Collections.Generic;
 
-namespace OpenAX25Contracts
+using OpenAX25Contracts;
+
+namespace OpenAX25Kiss
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// ChannelFactory for KISS.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public class ChannelFactory : IL2ChannelFactory
 	{
+
 		/// <summary>
-		/// Constructor.
+		/// ChannelFactory constructor.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		public ChannelFactory()	{}
 		
 		/// <summary>
-		/// Cionstructor.
+		/// The channel class name of this KISS implementation.
+		/// <c>KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95</c>
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
+		public string ChannelClass
+		{
+			get {
+				return "KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95";
+			}
+		}
+		
+		/// <summary>
+		/// Create a new KISS channel.
+		/// </summary>
+		/// <param name="properties">Proeprties for this KISS channel.</param>
+		/// <returns>New KISS channel.</returns>
+		public IL2Channel CreateChannel(IDictionary<string,string> properties)
+		{
+			return new KissInterface(properties).channels[0];
+		}
+		
 	}
 }
-

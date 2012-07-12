@@ -1,4 +1,4 @@
-//
+﻿//
 // AssemblyInfo.cs
 // 
 //  Author:
@@ -20,30 +20,34 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/
 //
 
+#region Using directives
+
+using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
-// Information about this assembly is defined by the following attributes. 
-// Change them to the values specific to your project.
+#endregion
 
-[assembly: AssemblyTitle("OpenAX25-GUI")]
-[assembly: AssemblyDescription("GUI for OpenAX25")]
+// General Information about an assembly is controlled through the following 
+// set of attributes. Change these attribute values to modify the information
+// associated with an assembly.
+[assembly: AssemblyTitle("OpenAX25-Core")]
+[assembly: AssemblyDescription("Core for OpenAX25")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Ham Radio Community")]
-[assembly: AssemblyProduct("")]
+[assembly: AssemblyProduct("OpenAX25")]
 [assembly: AssemblyCopyright("Copyright © 2012 by Tania Knöbl (DF9RY) - GNU LGPL v3")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-// The assembly version has the format "{Major}.{Minor}.{Build}.{Revision}".
-// The form "{Major}.{Minor}.*" will automatically update the build and revision,
-// and "{Major}.{Minor}.{Build}.*" will update just the revision.
+// This sets the default COM visibility of types in the assembly to invisible.
+// If you need to expose a type to COM, use [ComVisible(true)] on that type.
+[assembly: ComVisible(false)]
 
-[assembly: AssemblyVersion("0.1.*")]
-
-// The following attributes are used to specify the signing key for the assembly, 
-// if desired. See the Mono documentation for more information about signing.
-
-//[assembly: AssemblyDelaySign(false)]
-//[assembly: AssemblyKeyFile("")]
-
+// The assembly version has following format :
+//
+// Major.Minor.Build.Revision
+//
+// You can specify all the values or you can use the default the Revision and 
+// Build Numbers by using the '*' as shown below:
+[assembly: AssemblyVersion("1.0.*")]

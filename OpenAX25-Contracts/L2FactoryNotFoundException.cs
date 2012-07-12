@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// L2FactoryNotFoundException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,16 +25,15 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// A Factory with the given name is not found.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public class L2FactoryNotFoundException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		public L2FactoryNotFoundException(string message) : base(message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,8 +41,7 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
+		public L2FactoryNotFoundException(string message, Exception innerException)
 			: base(message, innerException) {}
 	}
 }
-

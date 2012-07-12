@@ -1,0 +1,17 @@
+###
+# GIT ignore for this repository
+###
+
+# Common patterns to ignore:
+*~
+*.userprefs
+*.suo
+*.shfbproj_*
+*.swp
+*.Cache
+StyleCopViolations.xml
+
+# Ignore bin dirs:
+bin/
+obj/
+Help/

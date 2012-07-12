@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// TxFrame.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -22,28 +22,42 @@
 
 using System;
 
-namespace OpenAX25Contracts
+namespace OpenAX25Core
 {
+
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// Holder object for transmit frame.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public struct L2TxFrame
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		/// <param name="no">Frame number.</param>
+		/// <param name="isPriorityFrame">When <c>true</c> the frame is a
+		/// priortity frame.</param>
+		/// <param name="data">Frame data</param>
+		public L2TxFrame (UInt64 no, bool isPriorityFrame, byte[] data)
+		{
+			this.no = no;
+			this.isPriorityFrame = isPriorityFrame;
+			this.data = data;
+		}
+
+		/// <summary>
+		/// Frame number.
+		/// </summary>
+		public readonly UInt64 no;
 		
 		/// <summary>
-		/// Cionstructor.
+		/// When <c>true</c> the frame is a priority frame.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
+		public readonly bool isPriorityFrame;
+		
+		/// <summary>
+		/// Frame data.
+		/// </summary>
+		public readonly byte[] data;
 	}
 }
 

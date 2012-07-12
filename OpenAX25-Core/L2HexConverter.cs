@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// L2HexConverter.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,29 +21,47 @@
 //
 
 using System;
+using System.Text;
 
-namespace OpenAX25Contracts
+namespace OpenAX25Core
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// Utility class for hexadecimal number handling.
 	/// </summary>
-	public class L2NoSpaceException : Exception
-	{
-		/// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+	public class L2HexConverter
+	{	
 		
 		/// <summary>
-		/// Cionstructor.
+		/// Hexadecimal digits in lower case.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
+		public static readonly char[] HEX_lc = new char[] {
+			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+		};
+		
+		/// <summary>
+		/// Hexadecimal digits in upper case.
+		/// </summary>
+		public static readonly char[] HEX_uc = new char[] {
+			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+		};
+		
+		public static string ToHexString(byte[] data)
+		{
+			if (data == null)
+				return "<null>";
+			StringBuilder sb = new StringBuilder(data.Length * 3);
+			foreach (byte b in data) {
+				if (sb.Length > 0)
+					sb.Append(' ');
+				sb.Append(HEX_lc[b/16]);
+				sb.Append(HEX_lc[b%16]);
+			} // end foreach //
+			return sb.ToString();
+		}
+		
+		private L2HexConverter() // No instances allowed.
+		{
+		}
+		
 	}
 }
-

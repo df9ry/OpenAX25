@@ -1,5 +1,5 @@
-//
-// TxFrame.cs
+﻿//
+// IL2ChannelFactory.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,21 +21,26 @@
 //
 
 using System;
+using System.Collections.Generic;
 
-namespace OpenAX25KISS
+namespace OpenAX25Contracts
 {
-	internal struct TxFrame
+	/// <summary>
+	/// Factory to create channel instances.
+	/// </summary>
+	public interface IL2ChannelFactory
 	{
-		internal TxFrame (UInt64 no, bool isPriorityFrame, byte[] data)
-		{
-			this.no = no;
-			this.isPriorityFrame = isPriorityFrame;
-			this.data = data;
-		}
-
-		internal UInt64 no;
-		internal bool isPriorityFrame;
-		internal byte[] data;
+		
+		/// <summary>
+		/// The channel class name (e.g. "KISS:" + &gt;GUID&lt; for a Kiss interface);
+		/// </summary>
+		string ChannelClass { get; }
+		
+		/// <summary>
+		/// Create a new instance of the channel, using the given properties.
+		/// </summary>
+		/// <param name="properties">Properties for the new channel instance.</param>
+		/// <returns>New channel instance.</returns>
+		IL2Channel CreateChannel(IDictionary<string,string> properties);
 	}
 }
-

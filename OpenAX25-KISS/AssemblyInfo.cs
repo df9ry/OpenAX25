@@ -1,4 +1,4 @@
-//
+﻿//
 // AssemblyInfo.cs
 // 
 //  Author:
@@ -22,6 +22,7 @@
 
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 // Information about this assembly is defined by the following attributes. 
 // Change them to the values specific to your project.
@@ -34,6 +35,10 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyCopyright("Copyright © 2012 by Tania Knöbl (DF9RY) - GNU LGPL v3")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
+
+// This sets the default COM visibility of types in the assembly to invisible.
+// If you need to expose a type to COM, use [ComVisible(true)] on that type.
+[assembly: ComVisible(false)]
 
 // The assembly version has the format "{Major}.{Minor}.{Build}.{Revision}".
 // The form "{Major}.{Minor}.*" will automatically update the build and revision,

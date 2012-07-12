@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// L2LogLevel.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,25 +25,30 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// Description of LogLevel.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public enum L2LogLevel
 	{
 		/// <summary>
-		/// Constructor.
+		/// No messages are logged at all.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		NONE,
 		
 		/// <summary>
-		/// Cionstructor.
+		/// Errors are logged.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
+		ERROR,
+		
+		/// <summary>
+		/// Errors and informational messages are logged
+		/// (Default).
+		/// </summary>
+		INFO,
+		
+		/// <summary>
+		/// All messages are logged, including full hex dumps
+		/// of data frames.
+		/// </summary>
+		DEBUG
 	}
 }
-

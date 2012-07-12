@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// 
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,29 +21,25 @@
 //
 
 using System;
+using System.Windows.Forms;
 
-namespace OpenAX25Contracts
+namespace OpenAX25GUI
 {
 	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+	/// Class with program entry point.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	internal sealed class Program
 	{
 		/// <summary>
-		/// Constructor.
+		/// Program entry point.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		[STAThread]
+		private static void Main(string[] args)
+		{
+			Application.EnableVisualStyles();
+			Application.SetCompatibleTextRenderingDefault(false);
+			Application.Run(new MainForm());
+		}
 		
-		/// <summary>
-		/// Cionstructor.
-		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
 	}
 }
-

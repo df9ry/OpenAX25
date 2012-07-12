@@ -1,5 +1,5 @@
-//
-// Main.cs
+﻿//
+// L2InvalidPropertyException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,18 +21,27 @@
 //
 
 using System;
-using Gtk;
 
-namespace OpenAX25GUI
+namespace OpenAX25Contracts
 {
-	class MainClass
+	/// <summary>
+	/// Raised when a mandatory property have a invalid value.
+	/// </summary>
+	public class L2InvalidPropertyException : Exception
 	{
-		public static void Main (string[] args)
-		{
-			Application.Init ();
-			MainWindow win = new MainWindow ();
-			win.Show ();
-			Application.Run ();
-		}
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		/// <param name="message">The message attached to this exception.</param>
+		public L2InvalidPropertyException(string message) : base(message) {}
+		
+		/// <summary>
+		/// Cionstructor.
+		/// </summary>
+		/// <param name="message">The message attached to this exception.</param>
+		/// <param name="innerException">Inner exception attached to this
+		/// exception</param>
+		public L2InvalidPropertyException(string message, Exception innerException)
+			: base(message, innerException) {}
 	}
 }
