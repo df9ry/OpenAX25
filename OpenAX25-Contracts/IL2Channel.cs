@@ -50,6 +50,11 @@ namespace OpenAX25Contracts
 		/// The properties.
 		/// </value>
 		IDictionary<string,string> Properties { get; }
+
+        /// <summary>
+        /// Get or set the target channel for received data.
+        /// </summary>
+        IL2Channel Target { get; set; }
 		
 		/// <summary>
 		/// Open the interface.
@@ -128,19 +133,7 @@ namespace OpenAX25Contracts
 		Int64 TXErrors { get; set; }
 
 		/// <summary>
-		/// Get frame from the receiver queue.
-		/// </summary>
-		/// <returns>
-		/// The next frame, if one is available: otherwise <c>null</c>.
-		/// </returns>
-		/// <param name='blocking'>
-		/// When there is no data on the receive queue and 'blocking' is <c>true</c>
-		/// the call blocks until there is data available.
-		/// </param>
-		byte[] ReceiveFrame(bool blocking);
-
-		/// <summary>
-		/// Send a frame over the channel.
+		/// Forward a frame to the channel.
 		/// </summary>
 		/// <returns>
 		/// Frame number that temporarily identifies the frame on this interface. Wrapping may
@@ -149,21 +142,13 @@ namespace OpenAX25Contracts
 		/// <param name='frame'>
 		/// Frame data.
 		/// </param>
-		/// <param name='blocking'>
-		/// If there is no room left on the transmit queue 'blocking' controls the behavior.
-		/// When set to <c>true'</c> the call blocks until space becomes available. Otherwise an
-		/// 'L2NoSpaceException' is thrown.
-		/// </param>
-		/// <param name='priority'>
-		/// Priority.
-		/// </param>
-		UInt64 SendFrame(byte[] frame, bool blocking, bool priority);
+        UInt64 ForwardFrame(L2Frame frame);
 
 		/// <summary>
-		/// Try to cancel a frame that enqueued earlier with SendFrame.
+		/// Try to cancel a frame that enqueued earlier with ForwardFrame.
 		/// </summary>
 		/// <returns>
-		/// <c>true</c> when transmission of the frame with number 'frameNo' could be
+		/// <c>true</c> when forwarding of the frame with number 'frameNo' could be
 		/// cancelled; otherwise, <c>false</c>.
 		/// </returns>
 		/// <param name='frameNo'>
@@ -177,17 +162,6 @@ namespace OpenAX25Contracts
 		/// </summary>
 		void Reset();
 
-		/// <summary>
-		/// Resets the channel and clears the receiver buffer. Pending transmit data
-		/// is preserved.
-		/// </summary>
-		void ResetRX();
-
-		/// <summary>
-		/// Resets the channel and clears the transmitter buffer. Pending received data
-		/// is presserved.
-		/// </summary>
-		void ResetTX();
 	}
 }
 

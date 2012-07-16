@@ -75,6 +75,10 @@
       <Project>{870854DE-4C27-433A-A502-E834FC601BE1}</Project>
       <Name>OpenAX25-KISS</Name>
     </ProjectReference>
+    <ProjectReference Include="..\OpenAX25-Router\OpenAX25-Router.csproj">
+      <Project>{0DB6E1D9-7914-4C8B-870E-E1D1F53A3F95}</Project>
+      <Name>OpenAX25-Router</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>

@@ -58,7 +58,6 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="ChannelFactory.cs" />
     <Compile Include="KissChannel.cs" />
-    <Compile Include="KissInterface.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

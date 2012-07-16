@@ -46,7 +46,6 @@
     <Compile Include="L2Channel.cs" />
     <Compile Include="L2Runtime.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="L2TxFrame.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">

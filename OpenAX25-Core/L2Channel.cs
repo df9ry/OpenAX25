@@ -21,7 +21,6 @@
 //
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -75,19 +74,9 @@ namespace OpenAX25Core
 		protected Int64 m_txErrors;
 		
 		/// <summary>
-		/// Receiver queue.
-		/// </summary>
-		protected BlockingCollection<byte[]> m_rxQueue = new BlockingCollection<byte[]>();
-		
-		/// <summary>
 		/// Trnamitter queue.
 		/// </summary>
-		protected IList<L2TxFrame> m_txQueue = new List<L2TxFrame>();
-		
-		/// <summary>
-		/// Next frame number to assign.
-		/// </summary>
-		protected UInt64 m_frameNo;
+		protected IList<L2Frame> m_txQueue = new List<L2Frame>();
 		
 		/// <summary>
 		/// Lock object for TX thread synchronization.
@@ -102,12 +91,17 @@ namespace OpenAX25Core
 		/// <summary>
 		/// Set to <c>true</c> will cancel the thread.
 		/// </summary>
-		protected bool m_txThreadStop;
+		protected volatile bool m_txThreadStop;
 		
 		/// <summary>
 		/// The runtime objcect.
 		/// </summary>
-		protected L2Runtime runtime = L2Runtime.Instance;
+		protected L2Runtime m_runtime = L2Runtime.Instance;
+
+        /// <summary>
+        /// Default target channel.
+        /// </summary>
+        protected IL2Channel m_target = null;
 		
 		/// <summary>
 		/// Constructor.
@@ -133,6 +127,7 @@ namespace OpenAX25Core
 				throw new L2MissingPropertyException("Name");
 			if (String.IsNullOrEmpty(this.m_name))
 				throw new L2InvalidPropertyException("Name");
+			L2Runtime.Instance.RegisterChannel(this, m_name);
 		}
 		
 		/// <summary>
@@ -153,12 +148,27 @@ namespace OpenAX25Core
 			}
 		}
 
-				/// <summary>
+        /// <summary>
+        /// Get or set the default target channel.
+        /// </summary>
+        public virtual IL2Channel Target
+        {
+            get
+            {
+                return this.m_target;
+            }
+            set
+            {
+                this.m_target = value;
+            }
+        }
+
+		/// <summary>
 		/// Number of frames in the receiver queue.
 		/// </summary>
 		public virtual Int32 RXSize {
 			get {
-				return this.m_rxQueue.Count;
+				return 0; // No buffering of receive data.
 			}
 		}
 
@@ -237,64 +247,45 @@ namespace OpenAX25Core
 			}
 		}
 
-		/// <summary>
-		/// Receive a frame on this interface.
-		/// </summary>
-		/// <param name="blocking">If set to <c>true</c> the call blocks until
-		/// there is a frame available on the receiver queue; Otherwise returns
-		/// <c>null</c></param>
-		/// <returns>Next received frame or null if nothing is pending and
-		/// <c>blocking</c> is <c>false</c>.</returns>
-		public virtual byte[] ReceiveFrame(bool blocking)
+        /// <summary>
+        /// Forward a frame to the channel.
+        /// </summary>
+        /// <param name="frame">Frame data.</param>
+        /// <returns>Frame number.</returns>
+        public virtual UInt64 ForwardFrame(L2Frame frame)
 		{
-			byte[] frame;
-			if (blocking)
-				frame = this.m_rxQueue.Take();
-			else if (!this.m_rxQueue.TryTake(out frame))
-				frame = null;
-			if (frame != null)
-				unchecked {
-					this.m_rxOctets -= frame.Length;
-				}
-			return frame;
-		}
-
-		/// <summary>
-		/// Send a frame over the channel.
-		/// </summary>
-		/// <param name="frame">The frame to send</param>
-		/// <param name="blocking">If <c>true</c> the call is blocking until a frame
-		/// is available on the channel; otherwise returning <c>null</c> in this case.</param>
-		/// <param name="priority">If <c>true</c> then send this frame prior to any non prior
-		/// frames on the channel. A transmission in progress is not interrupted. </param>
-		/// <returns>Frame number that identifies the frame for a later reference.
-		/// The number is rather long, however wrap around is not impossible.</returns>
-		public virtual UInt64 SendFrame (byte[] frame, bool blocking, bool priority)
-		{
-			if (frame == null)
-				throw new ArgumentNullException("frame");
-			UInt64 id = this.NewFrameNo();
-			L2TxFrame tf = new L2TxFrame(id, priority, frame);
+            if (frame.addr == null)
+                throw new ArgumentNullException("frame.addr");
+            if (frame.data == null)
+                throw new ArgumentNullException("frame.data");
 			lock (this.m_txQueue) {
 				int i = this.m_txQueue.Count;
-				if (priority)
+				if (frame.isPriorityFrame)
 					for (i = 0; i < this.m_txQueue.Count; ++i)
 						if (!this.m_txQueue[i].isPriorityFrame)
 							break;
-				this.m_txQueue.Insert(i, tf);
-				int l = frame.Length;
+				/*
+				if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
+					string text = String.Format(
+						"SendFrame({0}) NO={1} AT={2}",
+						L2HexConverter.ToHexString(frame.data), frame.no, i);
+					m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
+				}
+				*/
+				this.m_txQueue.Insert(i, frame);
+				int len = frame.data.Length;
 				unchecked {
-					this.m_txOctets += l;
-					this.m_txTotal += 1;
+					this.m_txOctets += len;
+					this.m_txTotal += len;
 				}
 			}
 			lock (this.m_txSync) {
-				Monitor.Pulse (this.m_txSync);
+				Monitor.Pulse(this.m_txSync);
 			}
-			return id;
+			return frame.no;
 		}
 
-		/// <summary>
+        /// <summary>
 		/// Try to cancel the transmittion of a frame. If the frame is in the
 		/// progress of transmission or transmitted already, <c>false</c> is
 		/// returned.
@@ -318,8 +309,12 @@ namespace OpenAX25Core
 						this.m_txOctets -= l;
 						this.m_txTotal -= 1;
 					}
+					m_runtime.Log(L2LogLevel.DEBUG, m_name,
+					              String.Format("Successfully cancelled frame no {0}", frameNo));
 					return true;
 				} else {
+					m_runtime.Log(L2LogLevel.DEBUG, m_name,
+					              String.Format("Unable to cancel frame no {0}", frameNo));
 					return false;
 				}
 			}
@@ -332,40 +327,7 @@ namespace OpenAX25Core
 		/// </summary>
 		public virtual void Reset()
 		{
-			lock (this) {
-				this.Close();
-				byte[] dummy;
-				while (this.m_rxQueue.TryTake(out dummy)) {}
-				this.m_rxOctets = 0;
-				this.m_txQueue.Clear();
-				this.m_txOctets = 0;
-				this.Open();
-			}
-		}
-
-		/// <summary>
-		/// Reset the channel and withdraw all frames in the
-		/// receiver queue. All frames in the transmitter queue
-		/// are preserved and will be sent on the new connection.
-		/// </summary>
-		public virtual void ResetRX()
-		{
-			lock (this) {
-				this.Close();
-				byte[] dummy;
-				while (this.m_rxQueue.TryTake(out dummy)) {}
-				this.m_rxOctets = 0;
-				this.Open();
-			}
-		}
-
-		/// <summary>
-		/// Reset the channel and withdraw all frames in the
-		/// transmitter queue. All frames in the receiver queue
-		/// are preserved and will be sent on the new connection.
-		/// </summary>
-		public virtual void ResetTX()
-		{
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Reset");
 			lock (this) {
 				this.Close();
 				this.m_txQueue.Clear();
@@ -378,10 +340,11 @@ namespace OpenAX25Core
 		/// Open the channel, so that data actually be transmitted and received.
 		/// </summary>
 		public virtual void Open() {
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Open");
 			if (this.m_txThread != null)
 				throw new InvalidOperationException("Channel is not closed");
 			this.m_txThreadStop = false;
-			this.m_txThread = new Thread(new ThreadStart(this.TransmitHandler));
+			this.m_txThread = new Thread(new ThreadStart(this.ForwardHandler));
 			this.m_txThread.Start();
 		}
 		
@@ -390,12 +353,14 @@ namespace OpenAX25Core
 		/// data is preserved.
 		/// </summary>
 		public virtual void Close() {
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Close");
 			if (this.m_txThread == null)
 				return;
 			this.m_txThreadStop = true;
 			lock(this.m_txSync) {
-				Monitor.Pulse(this.m_txSync);
+				Monitor.PulseAll(this.m_txSync);
 			}
+			this.m_txThread.Interrupt();
 			this.m_txThread.Join();
 			this.m_txThread = null;
 		}
@@ -403,57 +368,84 @@ namespace OpenAX25Core
 		/// <summary>
 		/// This handler is executed in the transmit thread.
 		/// </summary>
-		protected void TransmitHandler()
+		protected void ForwardHandler()
 		{
+			m_runtime.Log(L2LogLevel.INFO, m_name, "ForwardThread start");
 			while (!this.m_txThreadStop) {
-				byte[] frame = null;
+				L2Frame frame = L2Frame.Empty;
 				lock(this.m_txQueue) {
 					if (this.m_txQueue.Count > 0) {
-						frame = this.m_txQueue[0].data;
+						frame = this.m_txQueue[0];
 						this.m_txQueue.RemoveAt(0);
 						unchecked {
-							this.m_txOctets -= frame.Length;
+							this.m_txOctets -= frame.data.Length;
 						}
 					}
 				} // end lock //
-				if (frame == null) {
+				if (frame.IsEmpty()) {
 					lock(this.m_txSync) {
 						Monitor.Wait(this.m_txSync);
 					}
 				} else {
 					try {
-						this.OnTransmit(frame);
+						this.OnForward(frame);
 					} catch (Exception ex) {
-						this.OnTransmitError(
-							"Unable to transmit frame on interface " + this.m_name, ex);
+						this.OnForwardError(
+							"Unable to forward frame on interface " + this.m_name, ex);
 					}
 				}
 			} // end while //
+			m_runtime.Log(L2LogLevel.INFO, m_name, "ForwardThread end");
 		}
 
 		/// <summary>
-		/// Put received data frame into the receive queue.
+		/// Process incoming data.
 		/// </summary>
 		/// <param name="frame"></param>
-		protected virtual void OnReceive(byte[] frame)
+		protected virtual void OnReceive(L2Frame frame)
 		{
-			lock(this) {
-				this.m_rxQueue.Add(frame);
-				unchecked {
-					this.m_rxOctets += frame.Length;
-				}
-			}
+            if (m_target != null)
+            {
+            	if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
+					string text = String.Format(
+						"OnReceive({0}) NO={1} -> {2}",
+						L2HexConverter.ToHexString(frame.data), frame.no, m_target.Name);
+					m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
+            	}
+                lock (m_target)
+                {
+                    try
+                    {
+                        m_target.ForwardFrame(frame);
+                        unchecked
+                        {
+                            this.m_rxOctets += frame.data.Length;
+                        }
+                    }
+                    catch { }
+                }
+            }
 		}
 		
 		/// <summary>
 		/// Actually write data to the output media.
 		/// </summary>
 		/// <param name="data">Data to send</param>
-		protected virtual void OnTransmit(byte[] data)
+		protected virtual void OnForward(L2Frame frame)
 		{
-				unchecked {
-					this.m_txTotal += data.Length;
-				}
+			if (frame.addr == null)
+				throw new ArgumentNullException("frame.addr");
+			if (frame.data == null)
+				throw new ArgumentNullException("frame.data");
+        	if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
+				string text = String.Format(
+					"OnForward({0}) NO={1}",
+					L2HexConverter.ToHexString(frame.data), frame.no);
+				m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
+        	}
+			unchecked {
+				this.m_txTotal += frame.data.Length;
+			}
 		}
 		
 		/// <summary>
@@ -461,13 +453,13 @@ namespace OpenAX25Core
 		/// </summary>
 		/// <param name="message">Message describing the error.</param>
 		/// <param name="ex">Optional error exception.</param>
-		protected virtual void OnTransmitError(string message, Exception ex = null)
+		protected virtual void OnForwardError(string message, Exception ex = null)
 		{
 			if (ex != null)
-				message = String.Format("TX error: {0}: {1}", message, ex.Message);
+				message = String.Format("Forward error: {0}: {1}", message, ex.Message);
 			else
-				message = String.Format("TX error: {0}", message);
-			runtime.Log(L2LogLevel.ERROR, "L2Channel", message);
+				message = String.Format("Forward error: {0}", message);
+			m_runtime.Log(L2LogLevel.ERROR, "L2Channel", message);
 			unchecked {
 				this.m_txErrors += 1;
 			}
@@ -484,7 +476,7 @@ namespace OpenAX25Core
 				message = String.Format("RX error: {0}: {1}", message, ex.Message);
 			else
 				message = String.Format("RX error: {0}", message);
-			runtime.Log(L2LogLevel.ERROR, "L2Channel", message);
+			m_runtime.Log(L2LogLevel.ERROR, "L2Channel", message);
 			unchecked {
 				this.m_rxErrors += 1;
 			}
@@ -497,7 +489,7 @@ namespace OpenAX25Core
 		/// <param name="data">data to dump.</param>
 		protected virtual void OnReceiveError(string message, byte[] data)
 		{
-			runtime.Log(L2LogLevel.ERROR, "L2Channel",
+			m_runtime.Log(L2LogLevel.ERROR, "L2Channel",
 			            String.Format("RX error: {0}: {1}", message, L2HexConverter.ToHexString(data)));
 			unchecked {
 				this.m_rxErrors += 1;
@@ -514,27 +506,11 @@ namespace OpenAX25Core
 		}
 		
 		/// <summary>
-		/// Get a new frame no.
-		/// </summary>
-		/// <returns>New frame number.</returns>
-		protected virtual UInt64 NewFrameNo()
-		{
-			lock (this) {
-				unchecked {
-					return this.m_frameNo++;
-				}
-			}
-		}
-
-		/// <summary>
 		/// Local dispose.
 		/// </summary>
 		/// <param name="intern">Set to <c>true</c> when calling from user code.</param>
 		protected virtual void Dispose(bool intern)
 		{
-			if (intern) {
-				m_rxQueue.Dispose();
-			}
 		}
 
 	}

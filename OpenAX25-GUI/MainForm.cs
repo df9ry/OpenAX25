@@ -24,7 +24,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Threading;
 using System.Windows.Forms;
 
 using OpenAX25Contracts;
@@ -42,9 +41,8 @@ namespace OpenAX25GUI
 		private const int MAX_MONITOR_LINES = 1000;
 		private ArrayList m_logLines = new ArrayList(MAX_LOG_LINES);
 		private ArrayList m_monitorLines = new ArrayList(MAX_MONITOR_LINES);
-		private Thread receiveThread = null;
-		private bool receiveThreadStop = false;
 		
+		private IL2Channel m_routerChannel;
 		private IL2Channel m_kissChannel;
 		
 		public MainForm()
@@ -55,24 +53,39 @@ namespace OpenAX25GUI
 			InitializeComponent();
 
 			L2Runtime.Instance.LogProvider = this;
+			L2Runtime.Instance.LogLevel = L2LogLevel.DEBUG;
 			
 			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Program started");
+			
+			// Register the ROUTER Interface:
+			L2Runtime.Instance.RegisterFactory(new OpenAX25Router.ChannelFactory());
 			
 			// Register the KISS Interface:
 			L2Runtime.Instance.RegisterFactory(new OpenAX25Kiss.ChannelFactory());
 		
+			// Create ROUTER channel:
+			m_routerChannel = L2Runtime.Instance.CreateChannel
+				("ROUTER", new Dictionary<string,string>()
+				{
+				 	{ "Name",    "Router" },
+            });
+
+			// Create KISS channel:
 			m_kissChannel = L2Runtime.Instance.CreateChannel
 				("KISS", new Dictionary<string,string>()
 				{
-				 	{ "Name",    "MyKiss" },
+				 	{ "Name",    "Kiss" },
 				 	{ "ComPort", "COM12"  },
 	            });
 			
-			m_kissChannel.Open();
+			// Route KISS to ROUTER:
+			m_kissChannel.Target = m_routerChannel;
 			
-			receiveThreadStop = false;
-			receiveThread = new Thread(new ThreadStart(Receive));
-			receiveThread.Start();
+			// Open Router channel:
+			m_routerChannel.Open();
+			
+			// Open KISS channel:
+			m_kissChannel.Open();
 		}
 		
 		/// <summary>
@@ -91,6 +104,7 @@ namespace OpenAX25GUI
 			if (InvokeRequired)
 			{
 				this.Invoke(new Action<string>(AppendLog), new object[] {text});
+				return;
 			}
 			
 			string[] lines;
@@ -105,6 +119,9 @@ namespace OpenAX25GUI
 			}
 			
 			logTextBox.Lines = lines;
+			logTextBox.SelectionLength = logTextBox.Text.Length;
+			logTextBox.ScrollToCaret();
+			logTextBox.SelectionLength = 0;
 			logTextBox.Refresh();
 		}
 
@@ -122,40 +139,23 @@ namespace OpenAX25GUI
 					lines[i-1] = lines[i];
 				lines[m_monitorLines.Count - 1] = text;
 			} else {
-				m_logLines.Add(text);
-				lines = (string[]) m_logLines.ToArray(typeof(string));
+				m_monitorLines.Add(text);
+				lines = (string[]) m_monitorLines.ToArray(typeof(string));
 			}
 			
-			logTextBox.Lines = lines;
-			logTextBox.Refresh();
-		}
-		
-		private void Receive()
-		{
-			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Receiver thread started");
-			while (!receiveThreadStop) {
-				try {
-					byte[] frame = m_kissChannel.ReceiveFrame(true);
-					string text = String.Format("{0} <- {1}",
-									m_kissChannel.Name, L2HexConverter.ToHexString(frame));
-					AppendMonitor(text);
-				} catch (Exception ex) {
-					L2Runtime.Instance.Log(L2LogLevel.ERROR, "MainForm",
-					                "Receiver error on " + m_kissChannel.Name + ": " +ex.Message);
-				}
-			} // end while //
-			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Receiver thread stopped");
+			monitorTextBox.Lines = lines;
+			monitorTextBox.SelectionLength = monitorTextBox.Text.Length;
+			monitorTextBox.ScrollToCaret();
+			monitorTextBox.SelectionLength = 0;
+			monitorTextBox.Refresh();
 		}
 		
 		void MainFormFormClosing(object sender, FormClosingEventArgs e)
 		{
-			if (receiveThread != null) {
-				receiveThreadStop = true;
+			if (m_kissChannel != null)
 				m_kissChannel.Close();
-				receiveThread.Join();
-				Thread.Sleep(3000);
-			}
-			
+			if (m_routerChannel != null)
+				m_routerChannel.Close();
 		}
 	}
 }

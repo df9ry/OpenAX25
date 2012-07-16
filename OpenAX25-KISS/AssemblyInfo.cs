@@ -31,7 +31,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("KISS interface for OpenAX25")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Ham Radio Community")]
-[assembly: AssemblyProduct("")]
+[assembly: AssemblyProduct("OpenAX25")]
 [assembly: AssemblyCopyright("Copyright © 2012 by Tania Knöbl (DF9RY) - GNU LGPL v3")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

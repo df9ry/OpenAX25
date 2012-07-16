@@ -1,5 +1,5 @@
 ﻿//
-// ChannelFactory.cs
+// L2InvalidAX25FrameException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,43 +21,27 @@
 //
 
 using System;
-using System.Collections.Generic;
 
-using OpenAX25Contracts;
-
-namespace OpenAX25Kiss
+namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// ChannelFactory for KISS.
+	/// Description of L2InvalidAX25FrameException.
 	/// </summary>
-	public class ChannelFactory : IL2ChannelFactory
+	public class L2InvalidAX25FrameException : Exception
 	{
-
 		/// <summary>
-		/// ChannelFactory constructor.
+		/// Constructor.
 		/// </summary>
-		public ChannelFactory()	{}
+		/// <param name="message">The message attached to this exception.</param>
+		public L2InvalidAX25FrameException(string message) : base(message) {}
 		
 		/// <summary>
-		/// The channel class name of this KISS implementation.
-		/// <c>KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95</c>
+		/// Cionstructor.
 		/// </summary>
-		public string ChannelClass
-		{
-			get {
-				return "KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95";
-			}
-		}
-		
-		/// <summary>
-		/// Create a new KISS channel.
-		/// </summary>
-		/// <param name="properties">Proeprties for this KISS channel.</param>
-		/// <returns>New KISS channel.</returns>
-		public IL2Channel CreateChannel(IDictionary<string,string> properties)
-		{
-			return new KissChannel(properties);
-		}
-		
+		/// <param name="message">The message attached to this exception.</param>
+		/// <param name="innerException">Inner exception attached to this
+		/// exception</param>
+		public L2InvalidAX25FrameException(string message, Exception innerException)
+			: base(message, innerException) {}
 	}
 }

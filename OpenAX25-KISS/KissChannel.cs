@@ -1,5 +1,5 @@
 ﻿//
-// KissChannel.cs
+// KissInterface.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -22,7 +22,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
+using System.IO;
+using System.IO.Ports;
 
 using OpenAX25Contracts;
 using OpenAX25Core;
@@ -30,312 +31,332 @@ using OpenAX25Core;
 namespace OpenAX25Kiss
 {
 	/// <summary>
-	/// Description of KissChannel.
+	/// This is a raw KISS interface without port separation. The first octet of every
+	/// frame on this interface is the KISS control header.
 	/// </summary>
-	public class KissChannel : IL2Channel
+	public class KissChannel : L2Channel
 	{
-
-		private static readonly byte[] CHANNEL_ID = {
-			0x00,0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0,0xd0,0xe0,0xf0
-		};
+		private const int RAW_BUFFER_CHUNK = 256;
+		private const int FRAME_BUFFER_CHUNK = 1024;
+		private const byte FEND = 0xc0;
+		private const byte FESC = 0xdb;
+		private const byte TFEND = 0xdc;
+		private const byte TFESC = 0xdd;
+		private string comPort;
+		private int baudrate;
+		private byte[] rxRawBuffer = new byte[RAW_BUFFER_CHUNK];
+		private byte[] rxFrameBuffer = new byte[FRAME_BUFFER_CHUNK];
+		private byte[] txFrameBuffer = new byte[FRAME_BUFFER_CHUNK];
+		private int iFrameBuffer;
+		private bool fEscape;
+		private bool fInFrame;
 		
-		private byte m_channelId;
-		private KissInterface m_ifc;
-		private int m_channelNo;
-		private string m_name;
-		private BlockingCollection<byte[]> m_rxQueue = new BlockingCollection<byte[]>();
-		
-		private Int64 m_rxTotal;
-		private Int64 m_txTotal;
-		private Int64 m_rxOctets;
-
-		internal KissChannel(KissInterface ifc, int channelNo)
-		{
-			if ((channelNo < 0) || (channelNo > 15))
-				throw new ArgumentOutOfRangeException("channelNo");
-			m_ifc = ifc;
-			m_channelNo = channelNo;
-			m_channelId = CHANNEL_ID[channelNo];
-			m_name = String.Format("{0}[{1}]", ifc.Name, L2HexConverter.HEX_uc[channelNo]);
-		}
-		
-		/// <summary>
-		/// Gets the name of the channel. This name have to be unique accross the
-		/// application and can never change. There is no interpretion or syntax check
-		/// performed.
-		/// </summary>
-		/// <value>
-		/// The unique name of this channel.
-		/// </value>
-		public string Name { get { return m_name; } }
+		internal SerialPort port;
 
 		/// <summary>
-		/// Gets the properties of this channel.
+		/// Constructor.
 		/// </summary>
-		/// <value>
-		/// The properties.
-		/// </value>
-		public IDictionary<string,string> Properties { get { return m_ifc.Properties; } }
-		
-		/// <summary>
-		/// Open the interface.
-		/// <remarks>Only allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		public void Open()
-		{
-			if (m_channelNo != 0)
-				throw new InvalidOperationException("KISS administration is only allowed on port 0");
-			m_ifc.Open();
-		}
-		
-		/// <summary>
-		/// Close the interface.
-		/// <remarks>Only allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		public void Close()
-		{
-			if (m_channelNo != 0)
-				throw new InvalidOperationException("KISS administration is only allowed on port 0");
-			m_ifc.Close();
-		}
-
-		/// <summary>
-		/// Gets the number of frames available in the rx queue.
-		/// </summary>
-		/// <value>
-		/// The number of frames available in the rx queue.
-		/// </value>
-		public Int32 RXSize {
-			get {
-				m_ifc.CopyOver();
-				return m_rxQueue.Count;
-			}
-		}
-
-		/// <summary>
-		/// Gets the total number of octets available in the rx queue.
-		/// </summary>
-		/// <value>
-		/// The total number of octets available in the rx queue.
-		/// </value>
-		public Int64 RXOctets {
-			get {
-				m_ifc.CopyOver();
-				return m_rxOctets;
-			}
-		}
-
-		/// <summary>
-		/// Gets or sets the total number of octets received. Overflow of this
-		/// counter will be harmless by cycles the number around.
-		/// </summary>
-		/// <value>
-		/// The rx total number of octets.
-		/// </value>
-		public Int64 RXTotal {
-			get {
-				m_ifc.CopyOver();
-				return m_rxTotal;
-			}
-			set {
-				m_rxTotal = value;
-			}
-		}
-
-		/// <summary>
-		/// Gets or sets the number of rx errors occurred.
-		/// <remarks>The number counts for all channels on this interface, for it is not
-		/// possible to distinguish the channel in this place.</remarks>
-		/// <remarks>Setting this value is allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		/// <value>
-		/// The number of rx errors occurred.
-		/// </value>
-		public Int64 RXErrors {
-			get {
-				return m_ifc.RXErrors;
-			}
-			set {
-				if (m_channelNo != 0)
-					throw new InvalidOperationException("KISS administration is only allowed on port 0");
-				m_ifc.RXErrors = value;
-			}
-		}
-
-		/// <summary>
-		/// Gets the number of frames waiting in the tx queue.
-		/// </summary>
-		/// <value>
-		/// The number of frames waiting in the tx queue.
-		/// </value>
-		public Int32 TXSize { get { return m_ifc.GetTXSizeForChannel(m_channelId); } }
-
-		/// <summary>
-		/// Gets the total number of octets waiting in the tx queue.
-		/// </summary>
-		/// <value>
-		/// The total number of octets waiting in the tx queue.
-		/// </value>
-		public Int64 TXOctets { get { return m_ifc.GetTXOctetsForChannel(m_channelId); } }
-
-		/// <summary>
-		/// Gets or sets the total number of octets transmitted. Overflow of this
-		/// counter will be harmless by cycles the number around.
-		/// </summary>
-		/// <value>
-		/// The rx total number of octets.
-		/// </value>
-		public Int64 TXTotal {
-			get { return m_txTotal; }
-			set { m_txTotal = value; }
-		}
-
-		/// <summary>
-		/// Gets or sets the number of tx errors occurred.
-		/// <remarks>The number counts for all channels on this interface, for it is not
-		/// possible to distinguish the channel in this place.</remarks>
-		/// <remarks>Setting this value is allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		/// <value>
-		/// The number of tx errors occurred.
-		/// </value>
-		public Int64 TXErrors {
-			get {
-				return m_ifc.TXErrors;
-			}
-			set {
-				if (m_channelNo != 0)
-					throw new InvalidOperationException("KISS administration is only allowed on port 0");
-				m_ifc.TXErrors = value;
-			}
-		}
-
-		/// <summary>
-		/// Get frame from the receiver queue.
-		/// </summary>
-		/// <returns>
-		/// The next frame, if one is available: otherwise <c>null</c>.
-		/// </returns>
-		/// <param name='blocking'>
-		/// When there is no data on the receive queue and 'blocking' is <c>true</c>
-		/// the call blocks until there is data available.
+		/// <param name="properties">Properties of the channel.
+		/// <list type="bullet">
+		///   <listheader><term>Property name</term><description>Description</description></listheader>
+		///   <item><term>Name</term><description>Name of the interface [mandatory]</description></item>
+		///   <item><term>ComPort</term><description>Name of the COM port [default: COM1]</description></item>
+		///   <item><term>Baudrate</term><description>Baud rate [default: 9600]</description></item>
+		/// </list>
 		/// </param>
-		public byte[] ReceiveFrame(bool blocking)
+		public KissChannel(IDictionary<string,string> properties)
+			: base(properties)
 		{
-			m_ifc.CopyOver();
-			byte[] frame;
-			if (blocking)
-				frame = this.m_rxQueue.Take();
-			else if (!this.m_rxQueue.TryTake(out frame))
-				frame = null;
-			if (frame != null) {
-				int l = frame.Length;
-				unchecked {
-					this.m_rxOctets -= l;
+			if (!properties.TryGetValue("ComPort", out this.comPort))
+				this.comPort = "COM1";
+			if (String.IsNullOrEmpty(this.comPort))
+				throw new L2InvalidPropertyException("ComPort");
+			string _baudrate;
+			if (!properties.TryGetValue("Baudrate", out _baudrate))
+				_baudrate = "9600";
+			try {
+				this.baudrate = Int32.Parse(_baudrate);
+				if (this.baudrate <= 0)
+					throw new ArgumentOutOfRangeException("BaudRate");
+			} catch (Exception ex) {
+				throw new L2InvalidPropertyException("Baudrate", ex);
+			}
+		}
+
+		/// <summary>
+		/// Forward a frame to the channel.
+		/// </summary>
+		/// <param name="frame">The frame to send</param>
+		/// <returns>Frame number that identifies the frame for a later reference.
+		/// The number is rather long, however wrap around is not impossible.</returns>
+		public override UInt64 ForwardFrame(L2Frame frame)
+		{
+			return base.ForwardFrame(frame);
+		}
+
+		/// <summary>
+		/// Write data to the output media.
+		/// </summary>
+		/// <param name="frame">Frame to write.</param>
+		protected override void OnForward(L2Frame frame)
+		{
+			try {
+				base.OnForward(frame);
+				string _port;
+				if (!frame.addr.TryGetValue("Port", out _port))
+					throw new L2MissingPropertyException("Port");
+				if ("Raw".Equals(_port)) { // This is a raw packet:
+					this.port.Write(frame.data, 0, frame.data.Length);
+					return;
 				}
-				byte[] _frame = new Byte[l-1];
-				Array.Copy(frame, 1, _frame, 0, l-1);
-				frame = _frame;
+				// Regulary packet: Add port information:
+				int port = Int32.Parse(_port);
+				if ((port < 0) || (port > 15))
+					throw new ArgumentOutOfRangeException("KISS port not valid: " + port);
+				int l = frame.data.Length;
+				byte[] octets = new byte[l+1];
+				octets[0] = (byte) (port << 4);
+				Array.Copy(frame.data, 0, octets, 1, l);
+				this.port.Write(octets, 0, l+1);
+			} catch (Exception ex) {
+				this.OnForwardError("Error transmitting to serial port " + this.comPort, ex);
 			}
-			return frame;
 		}
 
-		/// <summary>
-		/// Send a frame over the channel.
-		/// </summary>
-		/// <returns>
-		/// Frame number that temporarily identifies the frame on this interface. Wrapping may
-		/// occur.
-		/// </returns>
-		/// <param name='frame'>
-		/// Frame data.
-		/// </param>
-		/// <param name='blocking'>
-		/// If there is no room left on the transmit queue 'blocking' controls the behavior.
-		/// When set to <c>true'</c> the call blocks until space becomes available. Otherwise an
-		/// 'L2NoSpaceException' is thrown.
-		/// </param>
-		/// <param name='priority'>
-		/// Priority.
-		/// </param>
-		public UInt64 SendFrame(byte[] frame, bool blocking, bool priority)
+		private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
 		{
-			if (frame == null)
-				throw new ArgumentNullException("frame");
-			byte[] kissFrame = new byte[frame.Length];
-			kissFrame[0] = m_channelId;
-			Array.Copy(frame, 0, kissFrame, 1, frame.Length);
+			SerialPort sp = (SerialPort)sender;
+			try {
+				while (true) {
+					int nBytes = sp.BytesToRead;
+					if (nBytes == 0)
+						break;
+					if (nBytes > this.rxRawBuffer.Length)
+						this.rxRawBuffer = new byte[( nBytes / RAW_BUFFER_CHUNK + 1 ) * 
+						                         RAW_BUFFER_CHUNK];
+					int bytesRead = sp.Read (this.rxRawBuffer, 0, nBytes);
+					for (int i = 0; i < bytesRead; ++i)
+						HandleRxByte(this.rxRawBuffer[i]);
+				} // end while //
+			} catch (IOException ex) {
+				this.OnReceiveError("IO Error on port " + this.comPort, ex);
+			} catch (InvalidOperationException ex) {
+				this.OnReceiveError("COM port is closed: " + this.comPort, ex);
+			}
+		}
+
+		private void ErrorReceivedHandler(object sender, SerialErrorReceivedEventArgs e)
+		{
+			//SerialPort sp = (SerialPort)sender;
+			switch (e.EventType) {
+			case SerialError.TXFull:
+				this.OnForwardError("Transmit queue is full on COM port " + this.comPort);
+				break;
+			case SerialError.RXOver:
+				// RX buffer full. Cancel current frame and re-sync:
+				this.OnReceiveError("Receive queue is full on COM port " + this.comPort);
+				this.iFrameBuffer = 0;
+				this.fInFrame = false;
+				break;
+			case SerialError.Overrun:
+				// RX overrun. Cancel current frame and re-sync:
+				this.OnReceiveError("Receiver overrun on COM port " + this.comPort);
+				this.iFrameBuffer = 0;
+				this.fInFrame = false;
+				break;
+			case SerialError.RXParity:
+				// RX parity error. Cancel current frame and re-sync:
+				this.OnReceiveError("Parity error on COM port " + this.comPort);
+				this.iFrameBuffer = 0;
+				this.fInFrame = false;
+				break;
+			case SerialError.Frame:
+				// RX framing error. Cancel current frame and re-sync:
+				this.OnReceiveError("Framing error on COM port " + this.comPort);
+				this.iFrameBuffer = 0;
+				this.fInFrame = false;
+				break;
+			} // end switch //
+		}
+
+		private void HandleRxByte(byte b)
+		{
+			if (this.fInFrame) {
+				if (this.fEscape) {
+					switch (b) {
+					case TFEND :
+						AppendRxByte(FEND);
+						break;
+					case TFESC :
+						AppendRxByte(FESC);
+						break;
+					default : // Protocol error:
+						this.OnReceiveError("Invalid octet after FESC on COM port " + this.comPort);
+						this.fInFrame = false;
+						break;
+					} // end switch //
+				} else { // Not escape //
+					switch (b) {
+					case FEND :
+						if (this.iFrameBuffer > 0) {
+							byte c = rxFrameBuffer[0];
+							if ((c & 0x0f) != 0x00) { // Not data frame.
+								if (m_runtime.LogLevel >= L2LogLevel.INFO) {
+									byte[] octets = new byte[iFrameBuffer];
+									Array.Copy(rxFrameBuffer, 0, octets, 0, iFrameBuffer);
+									m_runtime.Log(L2LogLevel.INFO, m_name,
+									              "Ignored incoming TNC control sequence " +
+									              L2HexConverter.ToHexString(octets));
+								}
+							} else { // Normal data frame:
+								int port = c;
+								port = port >> 4;
+								byte[] octets = new Byte[iFrameBuffer-1];
+								Array.Copy(rxFrameBuffer, 1, octets, 0, iFrameBuffer-1);
+								L2Frame frame = new L2Frame(m_runtime.NewFrameNo(), false, octets);
+								frame.addr.Add("Port", String.Format("{0}", port));
+								frame.addr.Add("Channel", m_name);
+								this.OnReceive(frame);
+							}
+							this.iFrameBuffer = 0;
+							this.fInFrame = true;
+						}
+						break;
+					case FESC :
+						this.fEscape = true;
+						break;
+					default :
+						AppendRxByte(b);
+						break;
+					} // end switch //
+				}
+			} else { // Not in frame //
+				if (b == FEND) {
+					this.fInFrame = true;
+					this.iFrameBuffer = 0;
+				}
+			}
+		}
+
+		private void AppendRxByte(byte b)
+		{
+			if (this.iFrameBuffer >= this.rxFrameBuffer.Length) {
+				byte[] newRxFrameBuffer = new byte[((this.iFrameBuffer + 1) / FRAME_BUFFER_CHUNK + 1) *
+					FRAME_BUFFER_CHUNK];
+				Array.Copy (this.rxFrameBuffer, newRxFrameBuffer, this.iFrameBuffer);
+				this.rxFrameBuffer = newRxFrameBuffer;
+			}
+			this.rxFrameBuffer [this.iFrameBuffer++] = b;
 			unchecked {
-				m_txTotal += frame.Length;
+				this.m_rxTotal += 1;
 			}
-			return m_ifc.SendFrame(kissFrame, blocking, priority);
 		}
 
 		/// <summary>
-		/// Try to cancel a frame that enqueued earlier with SendFrame.
+		/// Open the channel, so that data actually be transmitted and received.
 		/// </summary>
-		/// <returns>
-		/// <c>true</c> when transmission of the frame with number 'frameNo' could be
-		/// cancelled; otherwise, <c>false</c>.
-		/// </returns>
-		/// <param name='frameNo'>
-		/// The number of the frame that shall be cancelled.
-		/// </param>
-		public bool CancelFrame(UInt64 frameNo)
-		{
-			return m_ifc.CancelFrame(frameNo);
-		}
-
-		/// <summary>
-		/// Resets the channel. The data link is closed and reopened. All pending
-		/// data is withdrawn.
-		/// <remarks>Only allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		public void Reset()
-		{
-			if (m_channelNo != 0)
-				throw new InvalidOperationException("KISS administration is only allowed on port 0");
-			m_ifc.Reset();
-		}
-
-		/// <summary>
-		/// Resets the channel and clears the receiver buffer. Pending transmit data
-		/// is preserved.
-		/// <remarks>Only allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		public void ResetRX()
-		{
-			if (m_channelNo != 0)
-				throw new InvalidOperationException("KISS administration is only allowed on port 0");
-			m_ifc.ResetRX();
-		}
-
-		/// <summary>
-		/// Resets the channel and clears the transmitter buffer. Pending received data
-		/// is presserved.
-		/// <remarks>Only allowed on port 0 of the KISS interface</remarks>
-		/// </summary>
-		public void ResetTX()
-		{
-			if (m_channelNo != 0)
-				throw new InvalidOperationException("KISS administration is only allowed on port 0");
-			m_ifc.ResetTX();
-		}
-		
-				/// <summary>
-		/// Put received data frame into the receive queue.
-		/// </summary>
-		/// <param name="frame"></param>
-		internal void OnReceive(byte[] frame)
+		public override void Open()
 		{
 			lock(this) {
-				this.m_rxQueue.Add(frame);
-				unchecked {
-					this.m_rxOctets += frame.Length;
+				this.fInFrame = false;
+				this.fEscape = false;
+				this.iFrameBuffer = 0;
+				this.port = new SerialPort(comPort, this.baudrate);
+				this.port.Parity = Parity.None;
+				this.port.StopBits = StopBits.One;
+				this.port.DataBits = 8;
+				this.port.Handshake = Handshake.None;
+				this.port.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+				this.port.ErrorReceived += new SerialErrorReceivedEventHandler(ErrorReceivedHandler);
+				this.port.ReadBufferSize = 256;
+				this.port.ReadTimeout = 200;
+				this.port.ReceivedBytesThreshold = 1;
+				this.port.WriteTimeout = 10000;
+				this.port.WriteBufferSize = 256;
+				this.port.DiscardNull = false;
+				this.port.Open();
+				base.Open();
+			}
+		}
+
+		/// <summary>
+		/// Close the channel. No data will be transmitted or received. All queued
+		/// data is preserved.
+		/// </summary>
+		public override void Close()
+		{
+			lock(this) {
+				base.Close();
+				if (this.port != null) {
+					this.port.Close();
+					this.port.Dispose();
+					this.port = null;
 				}
 			}
 		}
-		
 
+		private byte[] Encode(int port, byte[] octets)
+		{
+			byte[] result;
+			lock (this.txFrameBuffer) {
+				int j = EncodeAdd(0, FEND);
+				byte c;
+				unchecked {
+					c = (byte) ((port & 0x0f) << 4);
+				}
+				if (c != FEND) {
+					j = EncodeAdd(j, c);
+				} else {
+					j = EncodeAdd(j, FESC);
+					j = EncodeAdd(j, TFEND);
+				}
+				foreach (byte b in octets) {
+					switch (b) {
+					case FEND :
+						j = EncodeAdd(j, FESC);
+						j = EncodeAdd(j, TFEND);
+						break;
+					case FESC :
+						j = EncodeAdd(j, FESC);
+						j = EncodeAdd(j, TFESC);
+						break;
+					default :
+						j = EncodeAdd(j, b);
+						break;
+					} // end switch //
+				} // end foreach //
+				j = EncodeAdd(j, FEND);
+				result = new byte[j];
+				Array.Copy (this.txFrameBuffer, result, j);
+			}
+			return result;
+		}
+
+		private int EncodeAdd(int j, byte b)
+		{
+			if (j >= this.txFrameBuffer.Length) {
+				byte[] newFrameBuffer =
+					new byte[((j + 1) / FRAME_BUFFER_CHUNK + 1) * FRAME_BUFFER_CHUNK];
+				Array.Copy (this.txFrameBuffer, newFrameBuffer, j);
+				this.txFrameBuffer = newFrameBuffer;
+			}
+			this.txFrameBuffer[j++] = b;
+			return j;
+		}
+		
+		/// <summary>
+		/// Local dispose.
+		/// </summary>
+		/// <param name="intern">Set to <c>true</c> when calling from user code.</param>
+		protected override void Dispose(bool intern)
+		{
+			if (intern) {
+				base.Dispose(true);
+				if (this.port != null)
+					this.port.Dispose();
+			}
+		}
+		
 	}
 }
+

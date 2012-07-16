@@ -1,5 +1,5 @@
 ﻿//
-// TxFrame.cs
+// ChannelFactory.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,43 +21,43 @@
 //
 
 using System;
+using System.Collections.Generic;
 
-namespace OpenAX25Core
+using OpenAX25Contracts;
+
+namespace OpenAX25Router
 {
-
 	/// <summary>
-	/// Holder object for transmit frame.
+	/// ChannelFactory for KISS.
 	/// </summary>
-	public struct L2TxFrame
+	public class ChannelFactory : IL2ChannelFactory
 	{
-		/// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="no">Frame number.</param>
-		/// <param name="isPriorityFrame">When <c>true</c> the frame is a
-		/// priortity frame.</param>
-		/// <param name="data">Frame data</param>
-		public L2TxFrame (UInt64 no, bool isPriorityFrame, byte[] data)
-		{
-			this.no = no;
-			this.isPriorityFrame = isPriorityFrame;
-			this.data = data;
-		}
 
 		/// <summary>
-		/// Frame number.
+		/// ChannelFactory constructor.
 		/// </summary>
-		public readonly UInt64 no;
+		public ChannelFactory()	{}
 		
 		/// <summary>
-		/// When <c>true</c> the frame is a priority frame.
+		/// The channel class name of this Router implementation.
+		/// <c>KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95</c>
 		/// </summary>
-		public readonly bool isPriorityFrame;
+		public string ChannelClass
+		{
+			get {
+				return "ROUTER:8953cc2a-6c93-47b2-ac63-455cdc7ea5ba";
+			}
+		}
 		
 		/// <summary>
-		/// Frame data.
+		/// Create a new ROUTER channel.
 		/// </summary>
-		public readonly byte[] data;
+		/// <param name="properties">Proeprties for this ROUTER channel.</param>
+		/// <returns>New KISS channel.</returns>
+		public IL2Channel CreateChannel(IDictionary<string,string> properties)
+		{
+			return new RouterChannel(properties);
+		}
+		
 	}
 }
-

@@ -52,8 +52,12 @@
     <Compile Include="IL2Channel.cs" />
     <Compile Include="IL2ChannelFactory.cs" />
     <Compile Include="IL2LogProvider.cs" />
+    <Compile Include="L2Callsign.cs" />
     <Compile Include="L2DuplicateNameException.cs" />
     <Compile Include="L2FactoryNotFoundException.cs" />
+    <Compile Include="L2Frame.cs" />
+    <Compile Include="L2Header.cs" />
+    <Compile Include="L2InvalidAX25FrameException.cs" />
     <Compile Include="L2InvalidPropertyException.cs" />
     <Compile Include="L2MissingPropertyException.cs" />
     <Compile Include="L2NoSpaceException.cs" />

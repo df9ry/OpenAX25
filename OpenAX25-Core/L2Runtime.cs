@@ -33,12 +33,13 @@ namespace OpenAX25Core
 	public class L2Runtime
 	{
 		
-		private IL2LogProvider m_logProvider;
+		private IL2LogProvider m_logProvider = null;
 		private L2LogLevel m_logLevel = L2LogLevel.INFO;
 		private IDictionary<string, IL2ChannelFactory> m_factories =
 			new Dictionary<string, IL2ChannelFactory>();
 		private IDictionary<string, IL2Channel> m_channels =
 			new Dictionary<string, IL2Channel>();
+		private UInt64 m_frameNo = 0;
 		
 		/// <summary>
 		/// The one and only runtime object.
@@ -186,5 +187,19 @@ namespace OpenAX25Core
 			else
 				return null;
 		}
+		
+		/// <summary>
+		/// Get a new frame no.
+		/// </summary>
+		/// <returns>New frame number.</returns>
+		public virtual UInt64 NewFrameNo()
+		{
+			lock (this) {
+				unchecked {
+					return this.m_frameNo++;
+				}
+			}
+		}
+
 	}
 }
