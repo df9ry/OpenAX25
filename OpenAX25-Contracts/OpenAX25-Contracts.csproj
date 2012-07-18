@@ -52,6 +52,7 @@
     <Compile Include="IL2Channel.cs" />
     <Compile Include="IL2ChannelFactory.cs" />
     <Compile Include="IL2LogProvider.cs" />
+    <Compile Include="IL2MonitorProvider.cs" />
     <Compile Include="L2Callsign.cs" />
     <Compile Include="L2DuplicateNameException.cs" />
     <Compile Include="L2FactoryNotFoundException.cs" />

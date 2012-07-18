@@ -39,14 +39,16 @@ namespace OpenAX25Contracts
 		/// <param name="isPriorityFrame">When <c>true</c> the frame is a
 		/// priortity frame.</param>
 		/// <param name="data">Frame data</param>
-		public L2Frame (UInt64 no, bool isPriorityFrame, byte[] data)
+		/// <param name="properties">Frame properties [Default: empty]</param>
+		public L2Frame (UInt64 no, bool isPriorityFrame, byte[] data,
+		                IDictionary<string,string> properties = null)
 		{
 			this.no = no;
 			this.isPriorityFrame = isPriorityFrame;
 			this.data = data;
 			if (data == null)
 				throw new ArgumentNullException("data");
-			this.addr = new Dictionary<string,string>();
+			this.addr = (properties == null)?(new Dictionary<string,string>()):properties;
 		}
 		
 		/// <summary>

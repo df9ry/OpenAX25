@@ -102,9 +102,9 @@ namespace OpenAX25Contracts
 		public override string ToString()
 		{
 			StringBuilder sb = new StringBuilder();
-			sb.Append(this.destination.ToString());
-			sb.Append(" <- ");
 			sb.Append(this.source.ToString());
+			sb.Append(" -> ");
+			sb.Append(this.destination.ToString());
 			if (this.digis.Length > 0) {
 				sb.Append(" via");
 				foreach (L2Callsign cs in this.digis) {

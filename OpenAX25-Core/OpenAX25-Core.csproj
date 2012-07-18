@@ -42,6 +42,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CrcB.cs" />
     <Compile Include="L2HexConverter.cs" />
     <Compile Include="L2Channel.cs" />
     <Compile Include="L2Runtime.cs" />

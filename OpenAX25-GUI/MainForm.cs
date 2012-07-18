@@ -34,7 +34,7 @@ namespace OpenAX25GUI
 	/// <summary>
 	/// Description of MainForm.
 	/// </summary>
-	public partial class MainForm : Form, IL2LogProvider
+	public partial class MainForm : Form, IL2LogProvider, IL2MonitorProvider
 	{
 		
 		private const int MAX_LOG_LINES = 1000;
@@ -42,8 +42,11 @@ namespace OpenAX25GUI
 		private ArrayList m_logLines = new ArrayList(MAX_LOG_LINES);
 		private ArrayList m_monitorLines = new ArrayList(MAX_MONITOR_LINES);
 		
+		private L2Runtime m_runtime = L2Runtime.Instance;
+		
 		private IL2Channel m_routerChannel;
 		private IL2Channel m_kissChannel;
+		private IL2Channel m_axudpChannel;
 		
 		public MainForm()
 		{
@@ -54,6 +57,7 @@ namespace OpenAX25GUI
 
 			L2Runtime.Instance.LogProvider = this;
 			L2Runtime.Instance.LogLevel = L2LogLevel.DEBUG;
+			L2Runtime.Instance.MonitorProvider = this;
 			
 			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Program started");
 			
@@ -62,30 +66,50 @@ namespace OpenAX25GUI
 			
 			// Register the KISS Interface:
 			L2Runtime.Instance.RegisterFactory(new OpenAX25Kiss.ChannelFactory());
+			
+			// Register the AXUDP Interface:
+			L2Runtime.Instance.RegisterFactory(new OpenAX25AXUDP.ChannelFactory());
 		
 			// Create ROUTER channel:
 			m_routerChannel = L2Runtime.Instance.CreateChannel
 				("ROUTER", new Dictionary<string,string>()
 				{
-				 	{ "Name",    "Router" },
-            });
+				 	{ "Name",    "ROUTER" },
+				 	{ "Routes",  "DB0FHN-9:Channel=AXUDP&DF9RY-0:Channel=KISS,Port=0" },
+            	});
 
 			// Create KISS channel:
 			m_kissChannel = L2Runtime.Instance.CreateChannel
 				("KISS", new Dictionary<string,string>()
 				{
-				 	{ "Name",    "Kiss" },
+				 	{ "Name",    "KISS" },
 				 	{ "ComPort", "COM12"  },
 	            });
 			
-			// Route KISS to ROUTER:
-			m_kissChannel.Target = m_routerChannel;
+			// Create AXUDP channel:
+			m_axudpChannel = L2Runtime.Instance.CreateChannel
+				("AXUDP", new Dictionary<string,string>()
+				{
+				 	{ "Name",    "AXUDP" },
+				 	{ "Host",    "db0fhn.efi.fh-nuernberg.de"  },
+				 	{ "Port",    "9300"  },
+	            });
 			
 			// Open Router channel:
 			m_routerChannel.Open();
 			
 			// Open KISS channel:
 			m_kissChannel.Open();
+
+			// Open AXUDP channel:
+			m_axudpChannel.Open();
+			
+			logLevelNoneButton.Checked    = (m_runtime.LogLevel == L2LogLevel.NONE   );
+			logLevelErrorButton.Checked   = (m_runtime.LogLevel == L2LogLevel.ERROR  );
+			logLevelWarningButton.Checked = (m_runtime.LogLevel == L2LogLevel.WARNING);
+			logLevelInfoButton.Checked    = (m_runtime.LogLevel == L2LogLevel.INFO   );
+			logLevelDebugButton.Checked   = (m_runtime.LogLevel == L2LogLevel.DEBUG  );
+			monitorCheckBox.Checked       = (m_runtime.MonitorProvider != null);
 		}
 		
 		/// <summary>
@@ -97,6 +121,15 @@ namespace OpenAX25GUI
 		{
 			string text = String.Format("{0}: {1}", component, message);
 			AppendLog(text);
+		}
+		
+		/// <summary>
+		/// The monitor implementation.
+		/// </summary>
+		/// <param name="text">Monitor text</param>
+		public void OnMonitor(string text)
+		{
+			AppendMonitor(text);
 		}
 		
 		private void AppendLog(string text)
@@ -119,10 +152,8 @@ namespace OpenAX25GUI
 			}
 			
 			logTextBox.Lines = lines;
-			logTextBox.SelectionLength = logTextBox.Text.Length;
+			logTextBox.AppendText(Environment.NewLine);
 			logTextBox.ScrollToCaret();
-			logTextBox.SelectionLength = 0;
-			logTextBox.Refresh();
 		}
 
 		private void AppendMonitor(string text)
@@ -144,10 +175,8 @@ namespace OpenAX25GUI
 			}
 			
 			monitorTextBox.Lines = lines;
-			monitorTextBox.SelectionLength = monitorTextBox.Text.Length;
+			monitorTextBox.AppendText(Environment.NewLine);
 			monitorTextBox.ScrollToCaret();
-			monitorTextBox.SelectionLength = 0;
-			monitorTextBox.Refresh();
 		}
 		
 		void MainFormFormClosing(object sender, FormClosingEventArgs e)
@@ -156,6 +185,48 @@ namespace OpenAX25GUI
 				m_kissChannel.Close();
 			if (m_routerChannel != null)
 				m_routerChannel.Close();
+			e.Cancel = false;
+			Application.Exit();
+			Environment.Exit(0);
+		}
+		
+		
+		void LogLevelNoneButtonCheckedChanged(object sender, EventArgs e)
+		{
+			if (logLevelNoneButton.Checked)
+				m_runtime.LogLevel = L2LogLevel.NONE;
+		}
+		
+		void LogLevelErrorButtonCheckedChanged(object sender, EventArgs e)
+		{
+			if (logLevelErrorButton.Checked)
+				m_runtime.LogLevel = L2LogLevel.ERROR;
+		}
+		
+		void LogLevelWarningButtonCheckedChanged(object sender, EventArgs e)
+		{
+			if (logLevelWarningButton.Checked)
+				m_runtime.LogLevel = L2LogLevel.WARNING;
+		}
+		
+		void LogLevelInfoButtonCheckedChanged(object sender, EventArgs e)
+		{
+			if (logLevelInfoButton.Checked)
+				m_runtime.LogLevel = L2LogLevel.INFO;
+		}
+		
+		void LogLevelDebugButtonCheckedChanged(object sender, EventArgs e)
+		{
+			if (logLevelDebugButton.Checked)
+				m_runtime.LogLevel = L2LogLevel.DEBUG;
+		}
+		
+		void MonitorCheckBoxCheckedChanged(object sender, EventArgs e)
+		{
+			if (monitorCheckBox.Checked)
+				m_runtime.MonitorProvider = this;
+			else
+				m_runtime.MonitorProvider = null;
 		}
 	}
 }

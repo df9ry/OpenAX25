@@ -34,6 +34,7 @@ namespace OpenAX25Core
 	{
 		
 		private IL2LogProvider m_logProvider = null;
+		private IL2MonitorProvider m_monitorProvider = null;
 		private L2LogLevel m_logLevel = L2LogLevel.INFO;
 		private IDictionary<string, IL2ChannelFactory> m_factories =
 			new Dictionary<string, IL2ChannelFactory>();
@@ -60,6 +61,9 @@ namespace OpenAX25Core
 		/// The log provider. If set to <c>null</c>, no logging is performed at all.
 		/// </summary>
 		public IL2LogProvider LogProvider {
+			get {
+				return m_logProvider;
+			}
 			set {
 				m_logProvider = value;
 			}
@@ -74,6 +78,18 @@ namespace OpenAX25Core
 			}
 			set {
 				m_logLevel = value;
+			}
+		}
+		
+		/// <summary>
+		/// The monitor provider. If set to <c>null</c>, no monitoring is performed at all.
+		/// </summary>
+		public IL2MonitorProvider MonitorProvider {
+			get {
+				return m_monitorProvider;
+			}
+			set {
+				m_monitorProvider = value;
 			}
 		}
 		
@@ -94,6 +110,15 @@ namespace OpenAX25Core
 				message = "<null>";
 			lock(this) {
 				try { m_logProvider.OnLog(component, message); } catch {}
+			}
+		}
+		
+		public void Monitor(string text)
+		{
+			if ((m_monitorProvider == null) || String.IsNullOrEmpty(text))
+				return;
+			lock(this) {
+				try { m_monitorProvider.OnMonitor(text); } catch {}
 			}
 		}
 		

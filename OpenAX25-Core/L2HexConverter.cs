@@ -45,7 +45,7 @@ namespace OpenAX25Core
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 		};
 		
-		public static string ToHexString(byte[] data)
+		public static string ToHexString(byte[] data, bool fShort = false)
 		{
 			if (data == null)
 				return "<null>";
@@ -55,6 +55,10 @@ namespace OpenAX25Core
 					sb.Append(' ');
 				sb.Append(HEX_lc[b/16]);
 				sb.Append(HEX_lc[b%16]);
+				if (fShort && (sb.Length > 60)) {
+					sb.Append(String.Format(" ... {0} octets", data.Length));
+					break;
+				}
 			} // end foreach //
 			return sb.ToString();
 		}

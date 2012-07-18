@@ -63,6 +63,10 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\OpenAX25-AXUDP\OpenAX25-AXUDP.csproj">
+      <Project>{4D51FA58-9355-4CC1-8BDE-3240D74C3845}</Project>
+      <Name>OpenAX25-AXUDP</Name>
+    </ProjectReference>
     <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">
       <Project>{8AC31167-8B8E-461B-A150-9EF4612002F0}</Project>
       <Name>OpenAX25-Contracts</Name>

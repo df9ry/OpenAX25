@@ -51,37 +51,40 @@ namespace OpenAX25GUI
 		private void InitializeComponent()
 		{
 			this.mainTabControl = new System.Windows.Forms.TabControl();
-			this.shellTabPage = new System.Windows.Forms.TabPage();
 			this.monitorTabPage = new System.Windows.Forms.TabPage();
 			this.monitorTextBox = new System.Windows.Forms.TextBox();
 			this.logTabPage = new System.Windows.Forms.TabPage();
 			this.logTextBox = new System.Windows.Forms.TextBox();
+			this.settingsTab = new System.Windows.Forms.TabPage();
+			this.debugLevelGroup = new System.Windows.Forms.GroupBox();
+			this.logLevelDebugButton = new System.Windows.Forms.RadioButton();
+			this.logLevelInfoButton = new System.Windows.Forms.RadioButton();
+			this.logLevelWarningButton = new System.Windows.Forms.RadioButton();
+			this.logLevelErrorButton = new System.Windows.Forms.RadioButton();
+			this.logLevelNoneButton = new System.Windows.Forms.RadioButton();
+			this.label1 = new System.Windows.Forms.Label();
+			this.configFileButton = new System.Windows.Forms.Button();
+			this.configFileField = new System.Windows.Forms.TextBox();
+			this.configFileLabel = new System.Windows.Forms.Label();
+			this.monitorCheckBox = new System.Windows.Forms.CheckBox();
 			this.mainTabControl.SuspendLayout();
 			this.monitorTabPage.SuspendLayout();
 			this.logTabPage.SuspendLayout();
+			this.settingsTab.SuspendLayout();
+			this.debugLevelGroup.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// mainTabControl
 			// 
-			this.mainTabControl.Controls.Add(this.shellTabPage);
 			this.mainTabControl.Controls.Add(this.monitorTabPage);
 			this.mainTabControl.Controls.Add(this.logTabPage);
+			this.mainTabControl.Controls.Add(this.settingsTab);
 			this.mainTabControl.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.mainTabControl.Location = new System.Drawing.Point(0, 0);
 			this.mainTabControl.Name = "mainTabControl";
 			this.mainTabControl.SelectedIndex = 0;
 			this.mainTabControl.Size = new System.Drawing.Size(665, 413);
 			this.mainTabControl.TabIndex = 0;
-			// 
-			// shellTabPage
-			// 
-			this.shellTabPage.Location = new System.Drawing.Point(4, 22);
-			this.shellTabPage.Name = "shellTabPage";
-			this.shellTabPage.Padding = new System.Windows.Forms.Padding(3);
-			this.shellTabPage.Size = new System.Drawing.Size(657, 387);
-			this.shellTabPage.TabIndex = 2;
-			this.shellTabPage.Text = "Shell";
-			this.shellTabPage.UseVisualStyleBackColor = true;
 			// 
 			// monitorTabPage
 			// 
@@ -130,6 +133,136 @@ namespace OpenAX25GUI
 			this.logTextBox.TabIndex = 0;
 			this.logTextBox.WordWrap = false;
 			// 
+			// settingsTab
+			// 
+			this.settingsTab.Controls.Add(this.monitorCheckBox);
+			this.settingsTab.Controls.Add(this.debugLevelGroup);
+			this.settingsTab.Controls.Add(this.label1);
+			this.settingsTab.Controls.Add(this.configFileButton);
+			this.settingsTab.Controls.Add(this.configFileField);
+			this.settingsTab.Controls.Add(this.configFileLabel);
+			this.settingsTab.Location = new System.Drawing.Point(4, 22);
+			this.settingsTab.Name = "settingsTab";
+			this.settingsTab.Padding = new System.Windows.Forms.Padding(3);
+			this.settingsTab.Size = new System.Drawing.Size(657, 387);
+			this.settingsTab.TabIndex = 5;
+			this.settingsTab.Text = "Settings";
+			this.settingsTab.UseVisualStyleBackColor = true;
+			// 
+			// debugLevelGroup
+			// 
+			this.debugLevelGroup.Controls.Add(this.logLevelDebugButton);
+			this.debugLevelGroup.Controls.Add(this.logLevelInfoButton);
+			this.debugLevelGroup.Controls.Add(this.logLevelWarningButton);
+			this.debugLevelGroup.Controls.Add(this.logLevelErrorButton);
+			this.debugLevelGroup.Controls.Add(this.logLevelNoneButton);
+			this.debugLevelGroup.Location = new System.Drawing.Point(119, 68);
+			this.debugLevelGroup.Name = "debugLevelGroup";
+			this.debugLevelGroup.Size = new System.Drawing.Size(128, 157);
+			this.debugLevelGroup.TabIndex = 4;
+			this.debugLevelGroup.TabStop = false;
+			// 
+			// logLevelDebugButton
+			// 
+			this.logLevelDebugButton.Location = new System.Drawing.Point(6, 127);
+			this.logLevelDebugButton.Name = "logLevelDebugButton";
+			this.logLevelDebugButton.Size = new System.Drawing.Size(104, 24);
+			this.logLevelDebugButton.TabIndex = 4;
+			this.logLevelDebugButton.TabStop = true;
+			this.logLevelDebugButton.Text = "Debug";
+			this.logLevelDebugButton.UseVisualStyleBackColor = true;
+			this.logLevelDebugButton.CheckedChanged += new System.EventHandler(this.LogLevelDebugButtonCheckedChanged);
+			// 
+			// logLevelInfoButton
+			// 
+			this.logLevelInfoButton.Location = new System.Drawing.Point(6, 95);
+			this.logLevelInfoButton.Name = "logLevelInfoButton";
+			this.logLevelInfoButton.Size = new System.Drawing.Size(104, 24);
+			this.logLevelInfoButton.TabIndex = 3;
+			this.logLevelInfoButton.TabStop = true;
+			this.logLevelInfoButton.Text = "Info";
+			this.logLevelInfoButton.UseVisualStyleBackColor = true;
+			this.logLevelInfoButton.CheckedChanged += new System.EventHandler(this.LogLevelInfoButtonCheckedChanged);
+			// 
+			// logLevelWarningButton
+			// 
+			this.logLevelWarningButton.Location = new System.Drawing.Point(6, 65);
+			this.logLevelWarningButton.Name = "logLevelWarningButton";
+			this.logLevelWarningButton.Size = new System.Drawing.Size(104, 24);
+			this.logLevelWarningButton.TabIndex = 2;
+			this.logLevelWarningButton.TabStop = true;
+			this.logLevelWarningButton.Text = "Warning";
+			this.logLevelWarningButton.UseVisualStyleBackColor = true;
+			this.logLevelWarningButton.CheckedChanged += new System.EventHandler(this.LogLevelWarningButtonCheckedChanged);
+			// 
+			// logLevelErrorButton
+			// 
+			this.logLevelErrorButton.Location = new System.Drawing.Point(6, 35);
+			this.logLevelErrorButton.Name = "logLevelErrorButton";
+			this.logLevelErrorButton.Size = new System.Drawing.Size(104, 24);
+			this.logLevelErrorButton.TabIndex = 1;
+			this.logLevelErrorButton.TabStop = true;
+			this.logLevelErrorButton.Text = "Error";
+			this.logLevelErrorButton.UseVisualStyleBackColor = true;
+			this.logLevelErrorButton.CheckedChanged += new System.EventHandler(this.LogLevelErrorButtonCheckedChanged);
+			// 
+			// logLevelNoneButton
+			// 
+			this.logLevelNoneButton.Location = new System.Drawing.Point(6, 5);
+			this.logLevelNoneButton.Name = "logLevelNoneButton";
+			this.logLevelNoneButton.Size = new System.Drawing.Size(104, 24);
+			this.logLevelNoneButton.TabIndex = 0;
+			this.logLevelNoneButton.TabStop = true;
+			this.logLevelNoneButton.Text = "None";
+			this.logLevelNoneButton.UseVisualStyleBackColor = true;
+			this.logLevelNoneButton.CheckedChanged += new System.EventHandler(this.LogLevelNoneButtonCheckedChanged);
+			// 
+			// label1
+			// 
+			this.label1.Location = new System.Drawing.Point(22, 76);
+			this.label1.Name = "label1";
+			this.label1.Size = new System.Drawing.Size(86, 19);
+			this.label1.TabIndex = 3;
+			this.label1.Text = "Log Level";
+			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// configFileButton
+			// 
+			this.configFileButton.Location = new System.Drawing.Point(527, 27);
+			this.configFileButton.Name = "configFileButton";
+			this.configFileButton.Size = new System.Drawing.Size(33, 23);
+			this.configFileButton.TabIndex = 2;
+			this.configFileButton.Text = "...";
+			this.configFileButton.UseVisualStyleBackColor = true;
+			// 
+			// configFileField
+			// 
+			this.configFileField.Location = new System.Drawing.Point(123, 29);
+			this.configFileField.Name = "configFileField";
+			this.configFileField.Size = new System.Drawing.Size(388, 20);
+			this.configFileField.TabIndex = 1;
+			// 
+			// configFileLabel
+			// 
+			this.configFileLabel.Location = new System.Drawing.Point(17, 33);
+			this.configFileLabel.Name = "configFileLabel";
+			this.configFileLabel.Size = new System.Drawing.Size(91, 16);
+			this.configFileLabel.TabIndex = 0;
+			this.configFileLabel.Text = "Config File";
+			this.configFileLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// monitorCheckBox
+			// 
+			this.monitorCheckBox.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.monitorCheckBox.Location = new System.Drawing.Point(262, 76);
+			this.monitorCheckBox.Name = "monitorCheckBox";
+			this.monitorCheckBox.Size = new System.Drawing.Size(104, 24);
+			this.monitorCheckBox.TabIndex = 5;
+			this.monitorCheckBox.Text = "Monitor";
+			this.monitorCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.monitorCheckBox.UseVisualStyleBackColor = true;
+			this.monitorCheckBox.CheckedChanged += new System.EventHandler(this.MonitorCheckBoxCheckedChanged);
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -137,20 +270,34 @@ namespace OpenAX25GUI
 			this.ClientSize = new System.Drawing.Size(665, 413);
 			this.Controls.Add(this.mainTabControl);
 			this.Name = "MainForm";
-			this.Text = "Open AX.25";
+			this.Text = "Open AX.25 - True Open Source for the HamRadio Community - GNU LGPL V3 applies";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainFormFormClosing);
 			this.mainTabControl.ResumeLayout(false);
 			this.monitorTabPage.ResumeLayout(false);
 			this.monitorTabPage.PerformLayout();
 			this.logTabPage.ResumeLayout(false);
 			this.logTabPage.PerformLayout();
+			this.settingsTab.ResumeLayout(false);
+			this.settingsTab.PerformLayout();
+			this.debugLevelGroup.ResumeLayout(false);
 			this.ResumeLayout(false);
 		}
+		private System.Windows.Forms.CheckBox monitorCheckBox;
+		private System.Windows.Forms.RadioButton logLevelInfoButton;
+		private System.Windows.Forms.RadioButton logLevelDebugButton;
+		private System.Windows.Forms.RadioButton logLevelErrorButton;
+		private System.Windows.Forms.RadioButton logLevelWarningButton;
+		private System.Windows.Forms.RadioButton logLevelNoneButton;
+		private System.Windows.Forms.GroupBox debugLevelGroup;
+		private System.Windows.Forms.Label label1;
+		private System.Windows.Forms.Button configFileButton;
+		private System.Windows.Forms.Label configFileLabel;
+		private System.Windows.Forms.TextBox configFileField;
+		private System.Windows.Forms.TabPage settingsTab;
 		private System.Windows.Forms.TextBox monitorTextBox;
 		private System.Windows.Forms.TextBox logTextBox;
 		private System.Windows.Forms.TabPage logTabPage;
 		private System.Windows.Forms.TabPage monitorTabPage;
-		private System.Windows.Forms.TabPage shellTabPage;
 		private System.Windows.Forms.TabControl mainTabControl;
 	}
 }

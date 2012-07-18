@@ -1,5 +1,5 @@
 ﻿//
-// KissInterface.cs
+// KissChannel.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -31,8 +31,7 @@ using OpenAX25Core;
 namespace OpenAX25Kiss
 {
 	/// <summary>
-	/// This is a raw KISS interface without port separation. The first octet of every
-	/// frame on this interface is the KISS control header.
+	/// This is a KISS channel.
 	/// </summary>
 	public class KissChannel : L2Channel
 	{
@@ -44,6 +43,7 @@ namespace OpenAX25Kiss
 		private const byte TFESC = 0xdd;
 		private string comPort;
 		private int baudrate;
+		private int kissPort;
 		private byte[] rxRawBuffer = new byte[RAW_BUFFER_CHUNK];
 		private byte[] rxFrameBuffer = new byte[FRAME_BUFFER_CHUNK];
 		private byte[] txFrameBuffer = new byte[FRAME_BUFFER_CHUNK];
@@ -59,9 +59,11 @@ namespace OpenAX25Kiss
 		/// <param name="properties">Properties of the channel.
 		/// <list type="bullet">
 		///   <listheader><term>Property name</term><description>Description</description></listheader>
-		///   <item><term>Name</term><description>Name of the interface [mandatory]</description></item>
-		///   <item><term>ComPort</term><description>Name of the COM port [default: COM1]</description></item>
-		///   <item><term>Baudrate</term><description>Baud rate [default: 9600]</description></item>
+		///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
+		///   <item><term>Target</term><description>Where to route packages to [Default: ROUTER]</description></item>
+		///   <item><term>ComPort</term><description>Name of the COM port [Default: COM1]</description></item>
+		///   <item><term>Baudrate</term><description>Baud rate [Default: 9600]</description></item>
+		///   <item><term>Port</term><description>Fixed KISS port [Default: Not set (-1)]</description></item>
 		/// </list>
 		/// </param>
 		public KissChannel(IDictionary<string,string> properties)
@@ -80,6 +82,16 @@ namespace OpenAX25Kiss
 					throw new ArgumentOutOfRangeException("BaudRate");
 			} catch (Exception ex) {
 				throw new L2InvalidPropertyException("Baudrate", ex);
+			}
+			string _port;
+			if (!properties.TryGetValue("Port", out _port))
+				_port = "-1";
+			try {
+				this.kissPort = Int32.Parse(_port);
+				if ((this.kissPort < -1) && (this.kissPort > 15))
+					throw new ArgumentOutOfRangeException("Port");
+			} catch (Exception ex) {
+				throw new L2InvalidPropertyException("Port", ex);
 			}
 		}
 
@@ -101,23 +113,30 @@ namespace OpenAX25Kiss
 		protected override void OnForward(L2Frame frame)
 		{
 			try {
+				/*
+				if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
+					foreach (KeyValuePair<string,string> kvp in frame.addr)
+						m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format("TX# \"{0}\" = \"{1}\"", kvp.Key, kvp.Value));
+				*/
 				base.OnForward(frame);
-				string _port;
-				if (!frame.addr.TryGetValue("Port", out _port))
-					throw new L2MissingPropertyException("Port");
-				if ("Raw".Equals(_port)) { // This is a raw packet:
-					this.port.Write(frame.data, 0, frame.data.Length);
-					return;
+				int port;
+				if (kissPort >= 0) {
+					port = kissPort;
+				} else {
+					string _port;
+					if (!frame.addr.TryGetValue("Port", out _port))
+						throw new L2MissingPropertyException("Port");
+					if ("Raw".Equals(_port)) { // This is a raw packet:
+						this.port.Write(frame.data, 0, frame.data.Length);
+						return;
+					}
+					// Regulary packet: Add port information:
+					port = Int32.Parse(_port);
+					if ((port < 0) || (port > 15))
+						throw new ArgumentOutOfRangeException("KISS port not valid: " + port);
 				}
-				// Regulary packet: Add port information:
-				int port = Int32.Parse(_port);
-				if ((port < 0) || (port > 15))
-					throw new ArgumentOutOfRangeException("KISS port not valid: " + port);
-				int l = frame.data.Length;
-				byte[] octets = new byte[l+1];
-				octets[0] = (byte) (port << 4);
-				Array.Copy(frame.data, 0, octets, 1, l);
-				this.port.Write(octets, 0, l+1);
+				byte[] octets = Encode(port, frame.data);
+				this.port.Write(octets, 0, octets.Length);
 			} catch (Exception ex) {
 				this.OnForwardError("Error transmitting to serial port " + this.comPort, ex);
 			}
@@ -294,6 +313,16 @@ namespace OpenAX25Kiss
 				}
 			}
 		}
+		
+		/*
+		protected override void OnReceive(L2Frame frame)
+		{
+			if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
+				foreach (KeyValuePair<string,string> kvp in frame.addr)
+					m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format("RX# \"{0}\" = \"{1}\"", kvp.Key, kvp.Value));
+			base.OnReceive(frame);
+		}
+		*/
 
 		private byte[] Encode(int port, byte[] octets)
 		{

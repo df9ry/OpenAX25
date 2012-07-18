@@ -1,5 +1,5 @@
 ﻿//
-// L2LogLevel.cs
+// IL2MonitorProvider
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,35 +25,14 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Description of LogLevel.
+	/// Description of IL2MonitorProvider.
 	/// </summary>
-	public enum L2LogLevel
+	public interface IL2MonitorProvider
 	{
 		/// <summary>
-		/// No messages are logged at all.
+		/// Called when a monitor message should be written.
 		/// </summary>
-		NONE,
-		
-		/// <summary>
-		/// Errors are logged.
-		/// </summary>
-		ERROR,
-		
-		/// <summary>
-		/// Only warnings and errors will be logged.
-		/// </summary>
-		WARNING,
-		
-		/// <summary>
-		/// Errors and informational messages are logged
-		/// (Default).
-		/// </summary>
-		INFO,
-		
-		/// <summary>
-		/// All messages are logged, including full hex dumps
-		/// of data frames.
-		/// </summary>
-		DEBUG
+		/// <param name="text">Monitor text.</param>
+		void OnMonitor(string text);
 	}
 }

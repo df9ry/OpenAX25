@@ -112,9 +112,8 @@ namespace OpenAX25Core
 		/// <term>Property name</term>
 		/// <description>Description</description>
 		/// </listheader>
-		/// <item>
-		/// <term>Name</term>
-		/// <description>Name of the interface [mandatory]</description>
+		/// <item><term>Name</term><description>Name of the channel [Mandatory]</description>
+		/// <item><term>Target</term><description>Where to route packages to [Default: ROUTER]</description></item>
 		/// </item>
 		/// </list>
 		/// </param>
@@ -127,6 +126,12 @@ namespace OpenAX25Core
 				throw new L2MissingPropertyException("Name");
 			if (String.IsNullOrEmpty(this.m_name))
 				throw new L2InvalidPropertyException("Name");
+			string _target;
+			if (!properties.TryGetValue("Target", out _target))
+				_target = "ROUTER";
+			m_target = m_runtime.LookupChannel(_target);
+			if (m_target == null)
+				throw new L2InvalidPropertyException("Target not found: " + _target);
 			L2Runtime.Instance.RegisterChannel(this, m_name);
 		}
 		
@@ -362,6 +367,7 @@ namespace OpenAX25Core
 			}
 			this.m_txThread.Interrupt();
 			this.m_txThread.Join();
+			this.m_txThread.Abort();
 			this.m_txThread = null;
 		}
 		
@@ -409,7 +415,7 @@ namespace OpenAX25Core
             	if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
 					string text = String.Format(
 						"OnReceive({0}) NO={1} -> {2}",
-						L2HexConverter.ToHexString(frame.data), frame.no, m_target.Name);
+						L2HexConverter.ToHexString(frame.data, true), frame.no, m_target.Name);
 					m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
             	}
                 lock (m_target)
@@ -440,7 +446,7 @@ namespace OpenAX25Core
         	if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
 				string text = String.Format(
 					"OnForward({0}) NO={1}",
-					L2HexConverter.ToHexString(frame.data), frame.no);
+					L2HexConverter.ToHexString(frame.data, true), frame.no);
 				m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
         	}
 			unchecked {
