@@ -24,6 +24,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 using OpenAX25Contracts;
@@ -39,10 +40,12 @@ namespace OpenAX25GUI
 		
 		private const int MAX_LOG_LINES = 1000;
 		private const int MAX_MONITOR_LINES = 1000;
+
 		private ArrayList m_logLines = new ArrayList(MAX_LOG_LINES);
 		private ArrayList m_monitorLines = new ArrayList(MAX_MONITOR_LINES);
-		
 		private L2Runtime m_runtime = L2Runtime.Instance;
+		private OpenAX25Settings m_settings = new OpenAX25Settings();
+		private Control[] m_controlsSave = null;
 		
 		private IL2Channel m_routerChannel;
 		private IL2Channel m_kissChannel;
@@ -54,11 +57,27 @@ namespace OpenAX25GUI
 			// The InitializeComponent() call is required for Windows Forms designer support.
 			//
 			InitializeComponent();
+			SaveTabControls();
 
-			L2Runtime.Instance.LogProvider = this;
-			L2Runtime.Instance.LogLevel = L2LogLevel.DEBUG;
-			L2Runtime.Instance.MonitorProvider = this;
+			//
+			// Get application settings:
+			//
+			m_runtime.LogProvider = this;
+			m_runtime.LogLevel = m_settings.LogLevel;
+			if (m_settings.MonitorOn) {
+				m_runtime.MonitorProvider = this;
+				if (!mainTabControl.Controls.Contains(monitorTabPage))
+					RestoreTabControls();
+			} else {
+				m_runtime.MonitorProvider = null;
+				if (mainTabControl.Controls.Contains(monitorTabPage))
+					mainTabControl.Controls.Remove(monitorTabPage);
+			}
+			this.configFileField.Text = m_settings.ConfigFile;
 			
+			//
+			// Start program:
+			//
 			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Program started");
 			
 			// Register the ROUTER Interface:
@@ -179,8 +198,25 @@ namespace OpenAX25GUI
 			monitorTextBox.ScrollToCaret();
 		}
 		
+		private void SaveTabControls()
+		{
+			m_controlsSave = new Control[mainTabControl.Controls.Count];
+			mainTabControl.Controls.CopyTo(m_controlsSave, 0);
+		}
+		
+		private void RestoreTabControls()
+		{
+			TabPage tab = mainTabControl.SelectedTab;
+			mainTabControl.Visible = false;
+			mainTabControl.Controls.Clear();
+			mainTabControl.Controls.AddRange(m_controlsSave);
+			mainTabControl.SelectedTab = tab;
+			mainTabControl.Visible = true;
+		}
+		
 		void MainFormFormClosing(object sender, FormClosingEventArgs e)
 		{
+			m_settings.Save();
 			if (m_kissChannel != null)
 				m_kissChannel.Close();
 			if (m_routerChannel != null)
@@ -193,40 +229,83 @@ namespace OpenAX25GUI
 		
 		void LogLevelNoneButtonCheckedChanged(object sender, EventArgs e)
 		{
-			if (logLevelNoneButton.Checked)
+			if (logLevelNoneButton.Checked) {
 				m_runtime.LogLevel = L2LogLevel.NONE;
+				m_settings.LogLevel = L2LogLevel.NONE;
+			}
 		}
 		
 		void LogLevelErrorButtonCheckedChanged(object sender, EventArgs e)
 		{
-			if (logLevelErrorButton.Checked)
+			if (logLevelErrorButton.Checked) {
 				m_runtime.LogLevel = L2LogLevel.ERROR;
+				m_settings.LogLevel = L2LogLevel.ERROR;
+			}
 		}
 		
 		void LogLevelWarningButtonCheckedChanged(object sender, EventArgs e)
 		{
-			if (logLevelWarningButton.Checked)
+			if (logLevelWarningButton.Checked) {
 				m_runtime.LogLevel = L2LogLevel.WARNING;
+				m_settings.LogLevel = L2LogLevel.WARNING;
+			}
 		}
 		
 		void LogLevelInfoButtonCheckedChanged(object sender, EventArgs e)
 		{
-			if (logLevelInfoButton.Checked)
+			if (logLevelInfoButton.Checked) {
 				m_runtime.LogLevel = L2LogLevel.INFO;
+				m_settings.LogLevel = L2LogLevel.INFO;
+			}
 		}
 		
 		void LogLevelDebugButtonCheckedChanged(object sender, EventArgs e)
 		{
-			if (logLevelDebugButton.Checked)
+			if (logLevelDebugButton.Checked) {
 				m_runtime.LogLevel = L2LogLevel.DEBUG;
+				m_settings.LogLevel = L2LogLevel.DEBUG;
+			}
 		}
 		
 		void MonitorCheckBoxCheckedChanged(object sender, EventArgs e)
 		{
-			if (monitorCheckBox.Checked)
+			if (monitorCheckBox.Checked) {
 				m_runtime.MonitorProvider = this;
-			else
+				m_settings.MonitorOn = true;
+				if (!mainTabControl.Controls.Contains(monitorTabPage))
+					RestoreTabControls();
+			} else {
 				m_runtime.MonitorProvider = null;
+				m_settings.MonitorOn = false;
+				if (mainTabControl.Controls.Contains(monitorTabPage))
+					mainTabControl.Controls.Remove(monitorTabPage);
+			}
+		}
+		
+		
+		void ConfigFileButtonClick(object sender, EventArgs e)
+		{
+			OpenFileDialog ofd = new OpenFileDialog();
+			FileInfo fi = new FileInfo(configFileField.Text);
+			ofd.InitialDirectory = fi.Directory.FullName;
+			ofd.FileName = fi.Name;
+			ofd.Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*";
+			ofd.FilterIndex = 1;
+			ofd.Multiselect = false;
+			ofd.RestoreDirectory = true;
+			if (ofd.ShowDialog() == DialogResult.OK) {
+				try {
+					Stream st = ofd.OpenFile();
+					if (st != null) {
+						//TODO: Open File
+						st.Close();
+						configFileField.Text = ofd.FileName;
+						m_settings.ConfigFile = ofd.FileName;
+					} 
+				} catch (Exception ex) {
+					MessageBox.Show("Error: Could not read file: " + ex.Message);
+				}
+			}
 		}
 	}
 }

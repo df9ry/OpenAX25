@@ -56,6 +56,7 @@ namespace OpenAX25GUI
 			this.logTabPage = new System.Windows.Forms.TabPage();
 			this.logTextBox = new System.Windows.Forms.TextBox();
 			this.settingsTab = new System.Windows.Forms.TabPage();
+			this.monitorCheckBox = new System.Windows.Forms.CheckBox();
 			this.debugLevelGroup = new System.Windows.Forms.GroupBox();
 			this.logLevelDebugButton = new System.Windows.Forms.RadioButton();
 			this.logLevelInfoButton = new System.Windows.Forms.RadioButton();
@@ -66,7 +67,6 @@ namespace OpenAX25GUI
 			this.configFileButton = new System.Windows.Forms.Button();
 			this.configFileField = new System.Windows.Forms.TextBox();
 			this.configFileLabel = new System.Windows.Forms.Label();
-			this.monitorCheckBox = new System.Windows.Forms.CheckBox();
 			this.mainTabControl.SuspendLayout();
 			this.monitorTabPage.SuspendLayout();
 			this.logTabPage.SuspendLayout();
@@ -148,6 +148,18 @@ namespace OpenAX25GUI
 			this.settingsTab.TabIndex = 5;
 			this.settingsTab.Text = "Settings";
 			this.settingsTab.UseVisualStyleBackColor = true;
+			// 
+			// monitorCheckBox
+			// 
+			this.monitorCheckBox.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.monitorCheckBox.Location = new System.Drawing.Point(262, 76);
+			this.monitorCheckBox.Name = "monitorCheckBox";
+			this.monitorCheckBox.Size = new System.Drawing.Size(104, 24);
+			this.monitorCheckBox.TabIndex = 5;
+			this.monitorCheckBox.Text = "Monitor";
+			this.monitorCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.monitorCheckBox.UseVisualStyleBackColor = true;
+			this.monitorCheckBox.CheckedChanged += new System.EventHandler(this.MonitorCheckBoxCheckedChanged);
 			// 
 			// debugLevelGroup
 			// 
@@ -234,11 +246,13 @@ namespace OpenAX25GUI
 			this.configFileButton.TabIndex = 2;
 			this.configFileButton.Text = "...";
 			this.configFileButton.UseVisualStyleBackColor = true;
+			this.configFileButton.Click += new System.EventHandler(this.ConfigFileButtonClick);
 			// 
 			// configFileField
 			// 
 			this.configFileField.Location = new System.Drawing.Point(123, 29);
 			this.configFileField.Name = "configFileField";
+			this.configFileField.ReadOnly = true;
 			this.configFileField.Size = new System.Drawing.Size(388, 20);
 			this.configFileField.TabIndex = 1;
 			// 
@@ -250,18 +264,6 @@ namespace OpenAX25GUI
 			this.configFileLabel.TabIndex = 0;
 			this.configFileLabel.Text = "Config File";
 			this.configFileLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// monitorCheckBox
-			// 
-			this.monitorCheckBox.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.monitorCheckBox.Location = new System.Drawing.Point(262, 76);
-			this.monitorCheckBox.Name = "monitorCheckBox";
-			this.monitorCheckBox.Size = new System.Drawing.Size(104, 24);
-			this.monitorCheckBox.TabIndex = 5;
-			this.monitorCheckBox.Text = "Monitor";
-			this.monitorCheckBox.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.monitorCheckBox.UseVisualStyleBackColor = true;
-			this.monitorCheckBox.CheckedChanged += new System.EventHandler(this.MonitorCheckBoxCheckedChanged);
 			// 
 			// MainForm
 			// 
