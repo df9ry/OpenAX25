@@ -54,5 +54,11 @@
       <Name>OpenAX25-Contracts</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="OpenAX25Config.xml" />
+    <None Include="OpenAX25Config.xsd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>
