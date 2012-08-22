@@ -33,7 +33,7 @@ namespace OpenAX25Contracts
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2MissingPropertyException(string message) : base(message) {}
+		public L2MissingPropertyException(string message) : base("Missing property: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,6 +42,6 @@ namespace OpenAX25Contracts
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
 		public L2MissingPropertyException(string message, Exception innerException)
-			: base(message, innerException) {}
+            : base("Missing property: " + message, innerException) { }
 	}
 }

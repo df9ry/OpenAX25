@@ -31,6 +31,10 @@
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' " />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DocumentationFile>..\bin\Debug\OpenAX25-GUI.xml</DocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -64,10 +68,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\OpenAX25-AXUDP\OpenAX25-AXUDP.csproj">
-      <Project>{4D51FA58-9355-4CC1-8BDE-3240D74C3845}</Project>
-      <Name>OpenAX25-AXUDP</Name>
-    </ProjectReference>
     <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">
       <Project>{8AC31167-8B8E-461B-A150-9EF4612002F0}</Project>
       <Name>OpenAX25-Contracts</Name>
@@ -75,14 +75,6 @@
     <ProjectReference Include="..\OpenAX25-Core\OpenAX25-Core.csproj">
       <Project>{58FCBE2E-2F76-42A2-B054-81C779C5F933}</Project>
       <Name>OpenAX25-Core</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpenAX25-KISS\OpenAX25-KISS.csproj">
-      <Project>{870854DE-4C27-433A-A502-E834FC601BE1}</Project>
-      <Name>OpenAX25-KISS</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpenAX25-Router\OpenAX25-Router.csproj">
-      <Project>{0DB6E1D9-7914-4C8B-870E-E1D1F53A3F95}</Project>
-      <Name>OpenAX25-Router</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

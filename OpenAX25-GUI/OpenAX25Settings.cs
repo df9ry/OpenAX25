@@ -69,7 +69,7 @@ namespace OpenAX25GUI
 		public String ConfigFile {
 			get {
 				if (String.IsNullOrEmpty((String)this["ConfigFile"])) {
-					this["ConfigFile"] = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "OpenAX25-Config.xml");
+					this["ConfigFile"] = "OpenAX25Config.xml";
 					dirty = true;
 				}
 				return (String)this["ConfigFile"];

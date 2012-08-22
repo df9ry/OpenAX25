@@ -165,21 +165,27 @@ namespace OpenAX25AXUDP
 		public override void Open()
 		{
 			lock(this) {
-				switch (m_mode) {
-					case Mode.ClientWithRemoteHost :
-					case Mode.ServerWithRemoteHost :
-						m_udpClient = new UdpClient(m_host, m_port);
-						break;
-					case Mode.ClientWithoutRemoteHost :
-					case Mode.ServerWithoutRemoteHost :
-						m_udpClient = new UdpClient(m_port);
-						break;
-				} // end switch //
-				base.Open();
-				try {
+                try
+                {
+                    switch (m_mode)
+                    {
+					    case Mode.ClientWithRemoteHost :
+					    case Mode.ServerWithRemoteHost :
+						    m_udpClient = new UdpClient(m_host, m_port);
+						    break;
+					    case Mode.ClientWithoutRemoteHost :
+					    case Mode.ServerWithoutRemoteHost :
+						    m_udpClient = new UdpClient(m_port);
+						    break;
+				    } // end switch //
+				    base.Open();
 					m_udpClient.BeginReceive(new AsyncCallback(ReceiveCallback), this);
 				} catch (Exception ex) {
-					OnReceiveError("Error starting receive", ex);
+                    string msg = String.Format(
+                        "Error starting receive (host={0},port={1}): {2}",
+                            (m_host != null)?m_host:"<NULL>", m_port, ex.Message);
+					OnReceiveError(msg);
+                    throw new Exception(msg, ex);
 				}
 			}
 		}

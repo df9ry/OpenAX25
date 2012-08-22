@@ -34,7 +34,7 @@ namespace OpenAX25Contracts
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base(message) {}
+		public L2NoSpaceException(string message) : base("No space: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -43,7 +43,7 @@ namespace OpenAX25Contracts
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
 		public L2NoSpaceException(string message, Exception innerException)
-			: base(message, innerException) {}
+            : base("No space: " + message, innerException) { }
 	}
 }
 

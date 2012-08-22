@@ -33,7 +33,7 @@ namespace OpenAX25Contracts
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2InvalidAX25FrameException(string message) : base(message) {}
+		public L2InvalidAX25FrameException(string message) : base("Invalid XX.25 frame: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,6 +42,6 @@ namespace OpenAX25Contracts
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
 		public L2InvalidAX25FrameException(string message, Exception innerException)
-			: base(message, innerException) {}
+            : base("Invalid XX.25 frame: " + message, innerException) { }
 	}
 }

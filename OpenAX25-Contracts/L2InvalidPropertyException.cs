@@ -33,7 +33,7 @@ namespace OpenAX25Contracts
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2InvalidPropertyException(string message) : base(message) {}
+		public L2InvalidPropertyException(string message) : base("Invalid property: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,6 +42,6 @@ namespace OpenAX25Contracts
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
 		public L2InvalidPropertyException(string message, Exception innerException)
-			: base(message, innerException) {}
+            : base("Invalid property: " + message, innerException) { }
 	}
 }

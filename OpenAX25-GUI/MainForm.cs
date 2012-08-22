@@ -22,8 +22,6 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 
@@ -80,48 +78,16 @@ namespace OpenAX25GUI
 			//
 			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Program started");
 			
-			// Register the ROUTER Interface:
-			L2Runtime.Instance.RegisterFactory(new OpenAX25Router.ChannelFactory());
-			
-			// Register the KISS Interface:
-			L2Runtime.Instance.RegisterFactory(new OpenAX25Kiss.ChannelFactory());
-			
-			// Register the AXUDP Interface:
-			L2Runtime.Instance.RegisterFactory(new OpenAX25AXUDP.ChannelFactory());
-		
-			// Create ROUTER channel:
-			m_routerChannel = L2Runtime.Instance.CreateChannel
-				("ROUTER", new Dictionary<string,string>()
-				{
-				 	{ "Name",    "ROUTER" },
-				 	{ "Routes",  "DB0FHN-9:Channel=AXUDP&DF9RY-0:Channel=KISS,Port=0" },
-            	});
-
-			// Create KISS channel:
-			m_kissChannel = L2Runtime.Instance.CreateChannel
-				("KISS", new Dictionary<string,string>()
-				{
-				 	{ "Name",    "KISS" },
-				 	{ "ComPort", "COM12"  },
-	            });
-			
-			// Create AXUDP channel:
-			m_axudpChannel = L2Runtime.Instance.CreateChannel
-				("AXUDP", new Dictionary<string,string>()
-				{
-				 	{ "Name",    "AXUDP" },
-				 	{ "Host",    "db0fhn.efi.fh-nuernberg.de"  },
-				 	{ "Port",    "9300"  },
-	            });
-			
-			// Open Router channel:
-			m_routerChannel.Open();
-			
-			// Open KISS channel:
-			m_kissChannel.Open();
-
-			// Open AXUDP channel:
-			m_axudpChannel.Open();
+			// Load Config file:
+            try
+            {
+                L2Runtime.Instance.LoadConfig(m_settings.ConfigFile);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(String.Format(
+                    "Config file \"{0}\" konnte nicht geladen werden ({1})!", m_settings.ConfigFile, e.Message));
+            }
 			
 			logLevelNoneButton.Checked    = (m_runtime.LogLevel == L2LogLevel.NONE   );
 			logLevelErrorButton.Checked   = (m_runtime.LogLevel == L2LogLevel.ERROR  );

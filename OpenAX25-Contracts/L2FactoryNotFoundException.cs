@@ -33,7 +33,7 @@ namespace OpenAX25Contracts
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2FactoryNotFoundException(string message) : base(message) {}
+		public L2FactoryNotFoundException(string message) : base("Factory not found: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -42,6 +42,6 @@ namespace OpenAX25Contracts
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
 		public L2FactoryNotFoundException(string message, Exception innerException)
-			: base(message, innerException) {}
+            : base("Factory not found: " + message, innerException) { }
 	}
 }

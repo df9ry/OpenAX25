@@ -31,6 +31,10 @@
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DocumentationFile>..\bin\Debug\OpenAX25-Core.xml</DocumentationFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -46,6 +50,7 @@
     <Compile Include="L2HexConverter.cs" />
     <Compile Include="L2Channel.cs" />
     <Compile Include="L2Runtime.cs" />
+    <Compile Include="NullChannel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -55,9 +60,11 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="OpenAX25Config.xml" />
+    <None Include="OpenAX25Config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="OpenAX25Config.xsd">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

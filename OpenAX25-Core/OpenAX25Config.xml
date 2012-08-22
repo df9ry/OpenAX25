@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<OpenAX25Config name="Default" xmlns="urn:OpenAX25Config-Schema">
+<OpenAX25Config name="Default" xmlns="urn:OpenAX25Config">
 	<Assemblies>
-		<Assembly file="OpenAX25-Router.dll" class="OpenAX25Router.ChannelFactory" />
-		<Assembly file="OpenAX25-KISS.dll" class="OpenAX25Kiss.ChannelFactory" />
-		<Assembly file="OpenAX25-AXUDP.dll" class="OpenAX25AXUDP.ChannelFactory" />
+		<Assembly file="OpenAX25-Router.dll" />
+		<Assembly file="OpenAX25-KISS.dll" />
+		<Assembly file="OpenAX25-AXUDP.dll" />
 	</Assemblies>
 	<Channels>
-		<Channel name="Router" class="Router" open="true">
+		<Channel name="Router" class="ROUTER" open="true">
 			<Property name="Route:DF9RY-*">Radio</Property>
 			<Property name="Route:*">DB0FHN</Property>
 		</Channel>
@@ -15,9 +15,9 @@
 			<Property name="ComPort">COM11</Property>
 			<Property name="BaudRate">9600</Property>
 		</Channel>
-		<Channel name="DB0FHN" class="AXUDP" targett="Router" open="true">
+		<Channel name="DB0FHN" class="AXUDP" target="Router" open="true">
 			<Property name="Port">9300</Property>
-			<Property name="Host">db0fhn-efi.fh-nuernberg.de</Property>
+			<Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
 			<Property name="Mode">Client</Property>
 		</Channel>
 	</Channels>

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
-	    xmlns="urn:OpenAX25Config-Schema" targetNamespace="urn:OpenAX25Config-Schema"
+	    xmlns="urn:OpenAX25Config" targetNamespace="urn:OpenAX25Config"
 	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 	
 	<xsd:element name="OpenAX25Config">
@@ -9,7 +9,8 @@
 				<xsd:element name="Assemblies" type="AssembliesType" minOccurs="0" maxOccurs="1" />
 				<xsd:element name="Channels"   type="ChannelsType"   minOccurs="0" maxOccurs="1" />
 			</xsd:sequence>
-		</xsd:complexType>
+            <xsd:attribute name="name" type="xsd:string" use="required" />
+        </xsd:complexType>
 	</xsd:element>
 	
 	<xsd:complexType name="AssembliesType">
@@ -20,7 +21,6 @@
 	
 	<xsd:complexType name="AssemblyType">
 		<xsd:attribute name="file"  type="xsd:string" use="required" />
-		<xsd:attribute name="class" type="xsd:string" use="required" />
 	</xsd:complexType>
 				
 	<xsd:complexType name="ChannelsType">

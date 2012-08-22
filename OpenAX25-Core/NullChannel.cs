@@ -26,7 +26,7 @@ using System.Collections.Generic;
 using OpenAX25Contracts;
 using OpenAX25Core;
 
-namespace OpenAX25Router
+namespace OpenAX25Core
 {
 	/// <summary>
 	/// The dummy channel.
@@ -39,7 +39,6 @@ namespace OpenAX25Router
 		internal NullChannel()
 		{
 			m_properties.Add("Name", Name);
-			L2Runtime.Instance.RegisterChannel(this, Name);
 		}
 		
 		/// <summary>

@@ -126,9 +126,7 @@ namespace OpenAX25Router
     	
     	private static IDictionary<string,string> FixRecursion(IDictionary<string,string> properties)
     	{
-    		// Create the dummy channel, if not already there:
-    		if (L2Runtime.Instance.LookupChannel("NULL") == null)
-    			new NullChannel();
+            // Set default target to the null channel:
     		if (properties.ContainsKey("Target"))
     			properties.Remove("Target");
     		properties.Add("Target", "NULL");

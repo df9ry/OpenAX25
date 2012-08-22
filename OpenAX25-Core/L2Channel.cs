@@ -113,7 +113,7 @@ namespace OpenAX25Core
 		/// <description>Description</description>
 		/// </listheader>
 		/// <item><term>Name</term><description>Name of the channel [Mandatory]</description>
-		/// <item><term>Target</term><description>Where to route packages to [Default: ROUTER]</description></item>
+		/// <item><term>Target</term><description>Where to route packages to [Default: Router]</description></item>
 		/// </item>
 		/// </list>
 		/// </param>
@@ -128,7 +128,7 @@ namespace OpenAX25Core
 				throw new L2InvalidPropertyException("Name");
 			string _target;
 			if (!properties.TryGetValue("Target", out _target))
-				_target = "ROUTER";
+				_target = "Router";
 			m_target = m_runtime.LookupChannel(_target);
 			if (m_target == null)
 				throw new L2InvalidPropertyException("Target not found: " + _target);
@@ -332,7 +332,7 @@ namespace OpenAX25Core
 		/// </summary>
 		public virtual void Reset()
 		{
-			m_runtime.Log(L2LogLevel.INFO, m_name, "Reset");
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Channel reset");
 			lock (this) {
 				this.Close();
 				this.m_txQueue.Clear();
@@ -345,7 +345,7 @@ namespace OpenAX25Core
 		/// Open the channel, so that data actually be transmitted and received.
 		/// </summary>
 		public virtual void Open() {
-			m_runtime.Log(L2LogLevel.INFO, m_name, "Open");
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Channel opened");
 			if (this.m_txThread != null)
 				throw new InvalidOperationException("Channel is not closed");
 			this.m_txThreadStop = false;
@@ -358,7 +358,7 @@ namespace OpenAX25Core
 		/// data is preserved.
 		/// </summary>
 		public virtual void Close() {
-			m_runtime.Log(L2LogLevel.INFO, m_name, "Close");
+			m_runtime.Log(L2LogLevel.INFO, m_name, "Channel close");
 			if (this.m_txThread == null)
 				return;
 			this.m_txThreadStop = true;
@@ -376,7 +376,7 @@ namespace OpenAX25Core
 		/// </summary>
 		protected void ForwardHandler()
 		{
-			m_runtime.Log(L2LogLevel.INFO, m_name, "ForwardThread start");
+			m_runtime.Log(L2LogLevel.DEBUG, m_name, "ForwardThread start");
 			while (!this.m_txThreadStop) {
 				L2Frame frame = L2Frame.Empty;
 				lock(this.m_txQueue) {
