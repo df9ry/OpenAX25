@@ -62,6 +62,7 @@
   <ItemGroup>
     <None Include="OpenAX25Config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
     </None>
     <None Include="OpenAX25Config.xsd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

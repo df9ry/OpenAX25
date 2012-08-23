@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<OpenAX25Routes name="Default" xmlns="urn:OpenAX25Routes">
+    
+    <!-- Forward frames to DF9RY to the TNC -->
+    <Route target="TNC">
+        <Pattern>^DF9RY-</Pattern>
+        <Property name="Channel">0</Property>
+    </Route>
+    
+    <!-- Anything else shall go to DB0FHN -->
+    <Route target="DB0FHN"/>
+</OpenAX25Routes>

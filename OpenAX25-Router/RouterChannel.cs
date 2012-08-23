@@ -22,10 +22,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.IO;
+using System.Reflection;
+using System.Xml;
+using System.Xml.Schema;
 using OpenAX25Contracts;
 using OpenAX25Core;
+using System.Text;
 
 namespace OpenAX25Router
 {
@@ -37,8 +40,7 @@ namespace OpenAX25Router
 	public class RouterChannel : L2Channel
     {
 		
-		private IDictionary<string, IDictionary<string,string>> m_routes =
-			new Dictionary<string, IDictionary<string,string>>();
+		private IList<Route> m_routes = new List<Route>();
     	
 		/// <summary>
 		/// Construct new RouterChannel.
@@ -55,7 +57,7 @@ namespace OpenAX25Router
 		/// </item>
 		/// <item>
 		/// <term>Routes</term>
-		/// <description>Static routes [Default: empty]</description>
+		/// <description>Routes file [Default: Not set]</description>
 		/// </item>
 		/// </list>
 		/// </param>
@@ -64,23 +66,57 @@ namespace OpenAX25Router
     	{
     		string _routes;
     		if (properties.TryGetValue("Routes", out _routes)) {
-    			foreach (string _route in _routes.Split('&')) {
-    				int p = _route.IndexOf(':');
-    				if (p < 0)
-    					throw new L2InvalidPropertyException("Syntax error: ':' missing: " + _route);
-    				string destination = _route.Substring(0, p);
-    				string _properties = _route.Substring(p+1);
-    				IDictionary<string,string> property_map = new Dictionary<string,string>();
-    				foreach (string _property in _properties.Split(',')) {
-    					int q = _property.IndexOf('=');
-    					if (q < 0)
-	    					throw new L2InvalidPropertyException("Syntax error: '=' missing: " + _property);
-    					string name = _property.Substring(0, q);
-    					string value = _property.Substring(q+1);
-    					property_map.Add(name, value);
-    				} // end foreach //
-    				m_routes.Add(destination, property_map);
-    			} // end foreach //
+                string fileName = Path.IsPathRooted(_routes)?_routes:
+                    Path.Combine(Path.GetDirectoryName(m_runtime.ConfigFileName), _routes);
+                string schemaFile = Path.Combine(Path.GetDirectoryName(
+                    Assembly.GetExecutingAssembly().Location), "OpenAX25Routes.xsd");
+                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
+                    m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format(
+                        "Loading config schema file \"{0}\"", schemaFile));
+                StreamReader xsdReader = new StreamReader(schemaFile);
+                XmlSchema schema = XmlSchema.Read(xsdReader,
+                    new ValidationEventHandler(XSDValidationEventHandler));
+
+                // Config the XML reader settings:
+                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
+                    m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format(
+                        "Loading XML route file \"{0}\"", fileName));
+                XmlReaderSettings readerSettings = new XmlReaderSettings();
+                readerSettings.ValidationType = ValidationType.Schema;
+                readerSettings.Schemas.Add(schema);
+                readerSettings.ValidationEventHandler +=
+                    new ValidationEventHandler(XMLValidationEventHandler);
+
+                // Read in the XML file:
+                XmlDocument doc = new XmlDocument();
+                using (XmlTextReader textReader = new XmlTextReader(fileName))
+                using (XmlReader reader = XmlReader.Create(textReader, readerSettings))
+                    doc.Load(reader);
+                XmlNamespaceManager nsm = new XmlNamespaceManager(doc.NameTable);
+                nsm.AddNamespace("route", "urn:OpenAX25Routes");
+
+                // Get name:
+                string name = ((XmlElement)doc.SelectSingleNode("/route:OpenAX25Routes", nsm))
+                    .GetAttribute("name");
+
+                m_runtime.Log(L2LogLevel.INFO, m_name,
+                    String.Format("Using routes \"{0}\"", name));
+
+                // Load routes:
+                foreach (XmlElement e in doc.SelectNodes("//route:Route", nsm))
+                {
+                    string target = e.GetAttribute("target");
+                    XmlElement patternElement = (XmlElement)e.SelectSingleNode("route:Pattern", nsm);
+                    string pattern = (patternElement != null)?patternElement.InnerText.Trim():".*";
+                    bool _continue = Boolean.Parse(e.GetAttribute("continue"));
+                    IDictionary<string, string> routeProperties = new Dictionary<string, string>();
+                    foreach (XmlElement p in e.SelectNodes("route:Property", nsm))
+                        routeProperties.Add(p.GetAttribute("name"), p.InnerText.Trim());
+                    m_runtime.Log(L2LogLevel.INFO, m_name, String.Format(
+                        "Route \"{0}\" to \"{1}\" and {2} ({3})", pattern, target,
+                            (_continue?"continue":"stop"), DumpProperties(routeProperties)));
+                    m_routes.Add(new Route(target, pattern, _continue, routeProperties));
+                } // end foreach //
     		}
     	}
     	
@@ -100,29 +136,63 @@ namespace OpenAX25Router
     		Array.Copy(frame.data, iData+1, data, 0, data.Length);
     		// Perform routing:
     		string targetCall = header.nextHop.ToString();
-	    	IDictionary<string,string> targetProperties;
-	    	string targetChannel;
-	    	if (!m_routes.TryGetValue(targetCall, out targetProperties)) {
-				targetProperties = null;
-				targetChannel = "NULL";
-	    	} else {
-	    		if (!targetProperties.TryGetValue("Channel", out targetChannel)) {
-	    			targetChannel = "NULL";
-	    		}
-	    	}
-    		string text = String.Format("{0} [{1}->{2}]: {3}", header.ToString(), targetChannel,
-	    	                            header.nextHop.ToString(), L2HexConverter.ToHexString(data, true));
-    		m_runtime.Log(L2LogLevel.INFO, m_name, text);
-    		m_runtime.Monitor(text);
-    		IL2Channel ch = m_runtime.LookupChannel(targetChannel);
-    		if (ch != null) {
-    			L2Frame new_frame = new L2Frame(m_runtime.NewFrameNo(), frame.isPriorityFrame,
-    			                                frame.data, targetProperties);
-    			ch.ForwardFrame(new_frame);
-    		} else {
-    			m_runtime.Log(L2LogLevel.WARNING, m_name, "Channel not found: " + targetChannel);
-    		}
+            IL2Channel targetChannel = null;
+            IDictionary<string,string> targetProperties = null;
+            foreach (Route r in m_routes)
+                if (r.IsMatch(targetCall))
+                {
+                    targetChannel = r.Channel;
+                    targetProperties = r.Properties;
+                    break;
+                }
+            if (targetChannel != null)
+            {
+                string text = String.Format("{0} [{1}-->{2}]: {3}", header.ToString(),
+                    header.nextHop.ToString(), targetChannel.Name,
+                    L2HexConverter.ToHexString(data, true));
+                if (m_runtime.LogLevel != L2LogLevel.DEBUG)
+                    m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
+                m_runtime.Monitor(text);
+                L2Frame new_frame = new L2Frame(m_runtime.NewFrameNo(), frame.isPriorityFrame,
+                                frame.data, targetProperties);
+                targetChannel.ForwardFrame(new_frame);
+            }
+            else
+            {
+                string text = String.Format("{0} [{1}--><NoRoute>]: {2}", header.ToString(),
+                    header.nextHop.ToString(), L2HexConverter.ToHexString(data, true));
+                m_runtime.Log(L2LogLevel.INFO, m_name, text);
+                m_runtime.Monitor(text);
+            }
     	}
+
+        private void XSDValidationEventHandler(object sender, ValidationEventArgs e)
+        {
+            string msg = String.Format("XSD Validation Error: {0}", e.Message);
+            switch (e.Severity)
+            {
+                case XmlSeverityType.Warning:
+                    m_runtime.Log(L2LogLevel.WARNING, m_name, msg);
+                    break;
+                case XmlSeverityType.Error:
+                    m_runtime.Log(L2LogLevel.ERROR, m_name, msg);
+                    throw e.Exception;
+            } // end switch //
+        }
+
+        private void XMLValidationEventHandler(object sender, ValidationEventArgs e)
+        {
+            string msg = String.Format("XSD Validation Error: {0}", e.Message);
+            switch (e.Severity)
+            {
+                case XmlSeverityType.Warning:
+                    m_runtime.Log(L2LogLevel.WARNING, m_name, msg);
+                    break;
+                case XmlSeverityType.Error:
+                    m_runtime.Log(L2LogLevel.ERROR, m_name, msg);
+                    throw e.Exception;
+            } // end switch //
+        }
     	
     	private static IDictionary<string,string> FixRecursion(IDictionary<string,string> properties)
     	{
@@ -132,6 +202,23 @@ namespace OpenAX25Router
     		properties.Add("Target", "NULL");
     		return properties;
     	}
+
+        private static string DumpProperties(IDictionary<string, string> properties)
+        {
+            if (properties == null)
+                return "<null>";
+            StringBuilder sb = new StringBuilder();
+            foreach (KeyValuePair<string, string> entry in properties)
+            {
+                if (sb.Length > 0)
+                    sb.Append(", ");
+                sb.Append(entry.Key);
+                sb.Append("=\"");
+                sb.Append(entry.Value);
+                sb.Append("\"");
+            } // end foreach //
+            return sb.ToString();
+        }
     	
     }
 }

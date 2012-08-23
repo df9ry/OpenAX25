@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="ChannelFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Route.cs" />
     <Compile Include="RouterChannel.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -54,6 +55,17 @@
       <Project>{58FCBE2E-2F76-42A2-B054-81C779C5F933}</Project>
       <Name>OpenAX25-Core</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="OpenAX25Routes.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="OpenAX25Routes.xsd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

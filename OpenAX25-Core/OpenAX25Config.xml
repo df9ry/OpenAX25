@@ -7,12 +7,11 @@
 	</Assemblies>
 	<Channels>
 		<Channel name="Router" class="ROUTER" open="true">
-			<Property name="Route:DF9RY-*">Radio</Property>
-			<Property name="Route:*">DB0FHN</Property>
+			<Property name="Routes">OpenAX25Routes.xml</Property>
 		</Channel>
-		<Channel name="Radio" class="KISS" target="Router" open="true">
+		<Channel name="TNC" class="KISS" target="Router" open="true">
 			<Property name="Port">0</Property>
-			<Property name="ComPort">COM11</Property>
+			<Property name="ComPort">COM12</Property>
 			<Property name="BaudRate">9600</Property>
 		</Channel>
 		<Channel name="DB0FHN" class="AXUDP" target="Router" open="true">
