@@ -45,10 +45,9 @@ namespace OpenAX25GUI
 		private OpenAX25Settings m_settings = new OpenAX25Settings();
 		private Control[] m_controlsSave = null;
 		
-		private IL2Channel m_routerChannel;
-		private IL2Channel m_kissChannel;
-		private IL2Channel m_axudpChannel;
-		
+		/// <summary>
+		/// The Main Form of this application.
+		/// </summary>
 		public MainForm()
 		{
 			//
@@ -183,10 +182,6 @@ namespace OpenAX25GUI
 		void MainFormFormClosing(object sender, FormClosingEventArgs e)
 		{
 			m_settings.Save();
-			if (m_kissChannel != null)
-				m_kissChannel.Close();
-			if (m_routerChannel != null)
-				m_routerChannel.Close();
 			e.Cancel = false;
 			Application.Exit();
 			Environment.Exit(0);

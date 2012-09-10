@@ -56,7 +56,7 @@ namespace OpenAX25AXUDP
 		///   <item><term>Target</term><description>Where to route packages to [Default: ROUTER]</description></item>
 		///   <item><term>Host</term><description>Name of the remote host [default: Any]</description></item>
 		///   <item><term>Port</term><description>Port [default: 9300]</description></item>
-		///   <item><term>Mode</term><description><c>Client<c/c> or <c>Server</c> [default: Client]</description></item>
+		///   <item><term>Mode</term><description><c>Client</c> or <c>Server</c> [default: Client]</description></item>
 		/// </list>
 		/// </param>
 		public AXUDPChannel(IDictionary<string,string> properties)

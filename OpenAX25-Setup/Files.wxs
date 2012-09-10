@@ -1,0 +1,21 @@
+﻿<?xml version="1.0"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Fragment>
+		<DirectoryRef Id="TARGETDIR">
+			<Directory Id="ProgramFilesFolder" Name="PFiles">
+				<Directory Id="INSTALLDIR" Name="OpenAX25">
+					<Component Id="Runtime" Guid="ADCD0387-E24F-462E-B8A7-F6AFC36BCA72" DiskId="1">
+						<File Id="LicenseFile1" Name="COPYING.LESSER"     Source="..\COPYING.LESSER"     />
+						<File Id="LicenseFile2" Name="COPYING.LESSER.rtf" Source="..\COPYING.LESSER.rtf" />
+						<File Id="LicenseFile3" Name="COPYING.LESSER.txt" Source="..\COPYING.LESSER.txt" />
+						<File Id="LicenseFile4" Name="COPYING.LESSER.htm" Source="..\COPYING.LESSER.html"/>
+						<File Id="LicenseFile5" Name="COPYING"            Source="..\COPYING"            />
+						<File Id="LicenseFile6" Name="COPYING.rtf"        Source="..\COPYING.rtf"        />
+						<File Id="LicenseFile7" Name="COPYING.txt"        Source="..\COPYING.txt"        />
+						<File Id="LicenseFile8" Name="COPYING.htm"        Source="..\COPYING.html"       />
+					</Component>
+				</Directory>
+			</Directory>
+		</DirectoryRef>
+	</Fragment>
+</Wix>

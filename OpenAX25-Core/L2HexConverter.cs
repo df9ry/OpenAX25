@@ -45,6 +45,12 @@ namespace OpenAX25Core
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 		};
 		
+		/// <summary>
+		/// Convert a binary data field into a hex dump string.
+		/// </summary>
+		/// <param name="data">The data to dump.</param>
+		/// <param name="fShort">Shall long data shortened with eclipsis?</param>
+		/// <returns>Hex dump string.</returns>
 		public static string ToHexString(byte[] data, bool fShort = false)
 		{
 			if (data == null)

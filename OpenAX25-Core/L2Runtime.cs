@@ -141,6 +141,10 @@ namespace OpenAX25Core
 			}
 		}
 		
+		/// <summary>
+		/// Add a line of text to the monitor window.
+		/// </summary>
+		/// <param name="text">Text to show in the monitor window.</param>
 		public void Monitor(string text)
 		{
 			if ((m_monitorProvider == null) || String.IsNullOrEmpty(text))

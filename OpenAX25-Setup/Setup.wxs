@@ -1,0 +1,40 @@
+﻿<?xml version="1.0"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*"
+		Name="Open AX.25 Packet Radio Suite"
+		Language="1033"
+		Version="1.0.0.0"
+		UpgradeCode="FCC56B7E-2770-45C6-893D-9129FF2883F8"
+		Manufacturer="Ham Radio Community">
+		<Package Description="#Description"
+			Comments="Comments"
+			InstallerVersion="200"
+			Compressed="yes"/>
+		<!--
+			Source media for the installation. 
+ 			Specifies a single cab file to be embedded in the installer's .msi. 
+		-->
+		<Media Id="1" Cabinet="contents.cab" EmbedCab="yes" CompressionLevel="high"/>
+		
+		<!-- Installation directory and files are defined in Files.wxs -->
+		<Directory Id="TARGETDIR" Name="SourceDir"/>
+		
+		<Feature Id="Runtime"
+		         Title="OpenAX25 Runtime"
+		         Description="Runtime files (required)"
+		         Level="1"
+		         ConfigurableDirectory="INSTALLDIR">
+		         <ComponentRef Id="Runtime"/>
+		</Feature>
+		
+		<!-- 
+			Using the Wix UI library
+ 
+			With the the WixUI_FeatureTree dialog set the user goes 
+			directly from the license agreement dialog to the feature 
+			customization dialog. This dialog set is useful
+			when your product installs all features by default. 
+		-->
+		<UIRef Id="WixUI_FeatureTree"/>
+	</Product>
+</Wix>

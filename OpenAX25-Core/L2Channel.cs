@@ -436,7 +436,7 @@ namespace OpenAX25Core
 		/// <summary>
 		/// Actually write data to the output media.
 		/// </summary>
-		/// <param name="data">Data to send</param>
+		/// <param name="frame">Data to send</param>
 		protected virtual void OnForward(L2Frame frame)
 		{
 			if (frame.addr == null)
