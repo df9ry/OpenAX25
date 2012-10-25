@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{0DB6E1D9-7914-4C8B-870E-E1D1F53A3F95}</ProjectGuid>
+    <ProjectGuid>{2BEB5660-44F9-4865-AC8F-3CA7D0C7ABAD}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OpenAX25Router</RootNamespace>
-    <AssemblyName>OpenAX25-Router</AssemblyName>
+    <RootNamespace>OpenAX25_Protocol</RootNamespace>
+    <AssemblyName>OpenAX25-Protocol</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -17,11 +17,10 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\bin\Debug\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>..\bin\Debug\OpenAX25-Router.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,6 +29,9 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -41,10 +43,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChannelFactory.cs" />
+    <Compile Include="AX25Frame.cs" />
+    <Compile Include="AX25InvalidFrame.cs" />
+    <Compile Include="AX25Modulo.cs" />
+    <Compile Include="AX25SFrame.cs" />
+    <Compile Include="AX25UFrame.cs" />
+    <Compile Include="AX25_DISC.cs" />
+    <Compile Include="AX25_DM.cs" />
+    <Compile Include="AX25_FRMR.cs" />
+    <Compile Include="AX25_I.cs" />
+    <Compile Include="AX25_REJ.cs" />
+    <Compile Include="AX25_RNR.cs" />
+    <Compile Include="AX25_RR.cs" />
+    <Compile Include="AX25_SABM.cs" />
+    <Compile Include="AX25_SABME.cs" />
+    <Compile Include="AX25_SREJ.cs" />
+    <Compile Include="AX25_TEST.cs" />
+    <Compile Include="AX25_UA.cs" />
+    <Compile Include="AX25_UI.cs" />
+    <Compile Include="AX25_XID.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Route.cs" />
-    <Compile Include="RouterChannel.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenAX25-Contracts\OpenAX25-Contracts.csproj">
@@ -55,21 +73,6 @@
       <Project>{58FCBE2E-2F76-42A2-B054-81C779C5F933}</Project>
       <Name>OpenAX25-Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\OpenAX25-Protocol\OpenAX25-Protocol.csproj">
-      <Project>{2BEB5660-44F9-4865-AC8F-3CA7D0C7ABAD}</Project>
-      <Name>OpenAX25-Protocol</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="OpenAX25Routes.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="OpenAX25Routes.xsd">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

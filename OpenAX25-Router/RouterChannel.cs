@@ -29,6 +29,7 @@ using System.Xml.Schema;
 using OpenAX25Contracts;
 using OpenAX25Core;
 using System.Text;
+using OpenAX25_Protocol;
 
 namespace OpenAX25Router
 {
@@ -149,8 +150,10 @@ namespace OpenAX25Router
             {
                 string text = String.Format("{0} [{1}-->{2}]: {3}", header.ToString(),
                     header.nextHop.ToString(), targetChannel.Name,
-                    L2HexConverter.ToHexString(data, true));
-                if (m_runtime.LogLevel != L2LogLevel.DEBUG)
+                    //L2HexConverter.ToHexString(data, true)
+                    AX25Frame.Create(data, AX25Modulo.MOD8).ToString()
+                );
+                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
                     m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
                 m_runtime.Monitor(text);
                 L2Frame new_frame = new L2Frame(m_runtime.NewFrameNo(), frame.isPriorityFrame,
