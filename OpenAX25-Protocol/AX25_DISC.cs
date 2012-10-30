@@ -15,6 +15,13 @@ namespace OpenAX25_Protocol
             PF  = p;
         }
 
+        public override AX25Frame_T FrameType {
+            get
+            {
+                return AX25Frame_T.DISC;
+            }
+        }
+
         internal AX25_DISC(byte[] octets)
             : base(octets)
         {

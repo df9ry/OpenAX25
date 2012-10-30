@@ -16,6 +16,15 @@ namespace OpenAX25_Protocol
             PF  = pf;
         }
 
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.RNR;
+            }
+        }
+
         internal AX25_RNR(byte[] octets, AX25Modulo modulo)
             : base(octets, modulo)
         {

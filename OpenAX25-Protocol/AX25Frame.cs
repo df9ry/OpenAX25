@@ -5,16 +5,51 @@ using System.Text;
 
 namespace OpenAX25_Protocol
 {
+
+    public enum AX25Frame_T
+    {
+        _INV, SABME, SABM, DISC, DM, FRMR, REJ, RNR, RR, SREJ, UA, I, UI, TEST, XID
+    }
+
     public abstract class AX25Frame
     {
 
         protected          byte[]     m_octets;
         protected readonly AX25Modulo m_modulo;
 
+        private static IDictionary<AX25Frame_T, string> N = new Dictionary<AX25Frame_T, string>
+        {
+            { AX25Frame_T._INV,  "_INV"  },
+            { AX25Frame_T.SABME, "SABME" },
+            { AX25Frame_T.SABM,  "SABM"  },
+            { AX25Frame_T.DISC,  "DISC"  },
+            { AX25Frame_T.DM,    "DM"    },
+            { AX25Frame_T.FRMR,  "FRMR"  },
+            { AX25Frame_T.REJ,   "REJ"   },
+            { AX25Frame_T.RNR,   "RNR"   },
+            { AX25Frame_T.RR,    "RR"    },
+            { AX25Frame_T.SREJ,  "SREJ"  },
+            { AX25Frame_T.UA,    "UA"    },
+            { AX25Frame_T.I,     "I"     },
+            { AX25Frame_T.UI,    "UI"    },
+            { AX25Frame_T.TEST,  "TEST"  },
+            { AX25Frame_T.XID,   "XID"   }
+        };
+
         protected AX25Frame(byte[] octets, AX25Modulo modulo)
         {
             m_octets = octets;
             m_modulo = modulo;
+        }
+
+        public abstract AX25Frame_T FrameType { get; }
+
+        public string FrameTypeName
+        {
+            get
+            {
+                return N[FrameType];
+            }
         }
 
         public static AX25Frame Create(byte[] octets, AX25Modulo modulo = AX25Modulo.UNSPECIFIED)

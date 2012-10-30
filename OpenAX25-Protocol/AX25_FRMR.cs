@@ -14,6 +14,14 @@ namespace OpenAX25_Protocol
             m_octets[0] = 0x87;
             PF  = f;
         }
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.FRMR;
+            }
+        }
     
         internal AX25_FRMR(byte[] octets)
             : base(octets)

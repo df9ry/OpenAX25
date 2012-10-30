@@ -14,6 +14,14 @@ namespace OpenAX25_Protocol
             m_octets[0] = 0x2F;
             PF  = p;
         }
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.SABM;
+            }
+        }
     
         internal AX25_SABM(byte[] octets)
             : base(octets)

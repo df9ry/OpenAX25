@@ -14,6 +14,14 @@ namespace OpenAX25_Protocol
         {
         }
 
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T._INV;
+            }
+        }
         protected override void ToString(StringBuilder sb)
         {
             sb.Append("IFRM ");

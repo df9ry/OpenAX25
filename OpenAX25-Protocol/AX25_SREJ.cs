@@ -15,6 +15,14 @@ namespace OpenAX25_Protocol
             N_R = n_r;
             PF  = pf;
         }
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.SREJ;
+            }
+        }
     
         internal AX25_SREJ(byte[] octets, AX25Modulo modulo)
             : base(octets, modulo)

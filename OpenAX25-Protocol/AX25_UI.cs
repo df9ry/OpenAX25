@@ -17,6 +17,14 @@ namespace OpenAX25_Protocol
             PF  = pf;
         }
 
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.UI;
+            }
+        }
+
         internal AX25_UI(byte[] octets)
             : base(octets)
         {

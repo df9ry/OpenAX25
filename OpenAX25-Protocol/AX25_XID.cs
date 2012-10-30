@@ -16,6 +16,14 @@ namespace OpenAX25_Protocol
             I   = i;
             PF  = pf;
         }
+
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.XID;
+            }
+        }
     
         internal AX25_XID(byte[] octets)
             : base(octets)

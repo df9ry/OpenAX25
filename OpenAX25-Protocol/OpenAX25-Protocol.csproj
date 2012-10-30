@@ -47,7 +47,9 @@
     <Compile Include="AX25InvalidFrame.cs" />
     <Compile Include="AX25Modulo.cs" />
     <Compile Include="AX25SFrame.cs" />
+    <Compile Include="AX25Timer.cs" />
     <Compile Include="AX25UFrame.cs" />
+    <Compile Include="AX25_Configuration.cs" />
     <Compile Include="AX25_DISC.cs" />
     <Compile Include="AX25_DM.cs" />
     <Compile Include="AX25_FRMR.cs" />
@@ -62,6 +64,10 @@
     <Compile Include="AX25_UA.cs" />
     <Compile Include="AX25_UI.cs" />
     <Compile Include="AX25_XID.cs" />
+    <Compile Include="DataLinkPrimitive.cs" />
+    <Compile Include="DataLinkStateMachine.cs" />
+    <Compile Include="LinkMultiplexerStateMachine.cs" />
+    <Compile Include="LinkMultiplexerPrimitive.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

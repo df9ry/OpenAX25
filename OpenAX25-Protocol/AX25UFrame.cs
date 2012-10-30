@@ -80,5 +80,15 @@ namespace OpenAX25_Protocol
             }
         }
 
+        public int InfoFieldLength
+        {
+            get
+            {
+                return m_octets.Length - 1;
+            }
+        }
+
+
+
     }
 }

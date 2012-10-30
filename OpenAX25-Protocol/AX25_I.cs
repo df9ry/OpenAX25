@@ -19,6 +19,14 @@ namespace OpenAX25_Protocol
             P = p;
         }
 
+        public override AX25Frame_T FrameType
+        {
+            get
+            {
+                return AX25Frame_T.I;
+            }
+        }
+
         internal AX25_I(byte[] octets, AX25Modulo modulo)
             : base(octets, modulo)
         {
@@ -149,6 +157,14 @@ namespace OpenAX25_Protocol
                     m_octets = octets;
                 }
                 Array.Copy(value, 0, m_octets, s_hdr, s_dat);
+            }
+        }
+
+        public int InfoFieldLength
+        {
+            get
+            {
+                return m_octets.Length - Size(m_modulo);
             }
         }
 
