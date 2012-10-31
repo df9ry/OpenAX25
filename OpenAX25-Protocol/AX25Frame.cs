@@ -16,6 +16,8 @@ namespace OpenAX25_Protocol
 
         protected          byte[]     m_octets;
         protected readonly AX25Modulo m_modulo;
+        protected readonly bool       m_command;
+        protected readonly bool       m_response;
 
         private static IDictionary<AX25Frame_T, string> N = new Dictionary<AX25Frame_T, string>
         {
@@ -52,8 +54,51 @@ namespace OpenAX25_Protocol
             }
         }
 
-        public static AX25Frame Create(byte[] octets, AX25Modulo modulo = AX25Modulo.UNSPECIFIED)
+        public virtual bool Poll
         {
+            get
+            {
+                return false;
+            }
+        }
+
+        public virtual bool Final
+        {
+            get
+            {
+                return false;
+            }
+        }
+
+        public bool Command
+        {
+            get
+            {
+                return (m_command && !m_response);
+            }
+        }
+
+        public bool Response
+        {
+            get
+            {
+                return (m_response && !m_command);
+            }
+        }
+
+        public bool PreviousVersion
+        {
+            get
+            {
+                return (m_command == m_response);
+            }
+        }
+
+        public static AX25Frame Create(byte[] octets, bool isCommand, bool isResponse,
+            DataLinkStateMachine.Version_T version = DataLinkStateMachine.Version_T.V2_0)
+        {
+            AX25Modulo modulo = (version == DataLinkStateMachine.Version_T.V2_2) ?
+                AX25Modulo.MOD128 : AX25Modulo.MOD8;
             if (octets == null)
                 throw new ArgumentNullException("octets");
             if (octets.Length == 0)

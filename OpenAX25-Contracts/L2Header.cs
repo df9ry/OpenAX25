@@ -40,10 +40,13 @@ namespace OpenAX25Contracts
 		{
 			bool last;
 			this.destination = new L2Callsign(octets, 0, out last);
-			if (last)
+            this.isCommand = this.destination.chBit;
+            if (last)
 				throw new L2InvalidAX25FrameException("Source field missing");
 			this.source = new L2Callsign(octets, 7, out last);
-			if (last) {
+            this.isResponse = this.source.chBit;
+            if (last)
+            {
 				this.digis = new L2Callsign[0];
 				return;
 			}
@@ -63,8 +66,10 @@ namespace OpenAX25Contracts
 		public L2Header(L2Callsign source, L2Callsign destination, L2Callsign[] digis)
 		{
 			this.source = source;
-			this.destination = destination;
-			this.digis = digis;			
+            this.isResponse = this.source.chBit;
+            this.destination = destination;
+            this.isCommand = this.destination.chBit;
+            this.digis = digis;			
 		}
 		
 		/// <summary>
@@ -81,8 +86,40 @@ namespace OpenAX25Contracts
 		/// The intermediate digis on the path.
 		/// </summary>
 		public readonly L2Callsign[] digis;
-		
-		/// <summary>
+
+        /// <summary>
+        /// C-Bit of the destination callsign.
+        /// </summary>
+        public readonly bool isCommand;
+
+        /// <summary>
+        /// C-Bit of the source callsign.
+        /// </summary>
+        public readonly bool isResponse;
+
+        /// <summary>
+        /// Test if this frame is a V1 frame.
+        /// </summary>
+        public Boolean isV1Frame
+        {
+            get
+            {
+                return (isCommand == isResponse);
+            }
+        }
+
+        /// <summary>
+        /// Test if this frame is a V2 frame.
+        /// </summary>
+        public Boolean isV2Frame
+        {
+            get
+            {
+                return (isCommand != isResponse);
+            }
+        }
+
+        /// <summary>
 		/// The next station to go.
 		/// </summary>
 		public L2Callsign nextHop

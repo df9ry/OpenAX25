@@ -88,7 +88,21 @@ namespace OpenAX25_Protocol
             }
         }
 
+        public override bool Poll
+        {
+            get
+            {
+                return PF;
+            }
+        }
 
+        public override bool Final
+        {
+            get
+            {
+                return PF;
+            }
+        }
 
     }
 }

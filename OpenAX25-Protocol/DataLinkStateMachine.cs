@@ -9,6 +9,50 @@ namespace OpenAX25_Protocol
 
     internal class DataLinkStateMachine
     {
+
+        /// <summary>
+        /// Send State Variable V(S).
+        /// The send state variable exists within the TNC and is never sent. It contains the next sequential number to be
+        /// assigned to the next transmitted I frame. This variable is updated with the transmission of each I frame.
+        /// </summary>
+        private int V_S = 0;
+
+        /// <summary>
+        /// Send Sequence Number N(S).
+        /// The send sequence number is found in the control field of all I frames. It contains the sequence number of the
+        /// I frame being sent. Just prior to the transmission of the I frame, N(S) is updated to equel the send state variable.
+        /// </summary>
+        private int N_S = 0;
+
+        /// <summary>
+        /// Receive State Variable V(R).
+        /// The receive state variable exists within the TNC. It contains the sequence number of the next expected
+        /// received I frame. This variable is updated upon the reception of an error-free I frame whose send sequence
+        /// number equals the present received state variable value.
+        /// </summary>
+        private int V_R = 0;
+
+        /// <summary>
+        /// Received Sequence Number N(R).
+        /// The received sequence number exists in both I and S frames. Prior to sending an I or S frame, this variable is
+        /// updated to equal that of the received state variable, thus implicitly acknowledging the proper reception of all
+        /// frames up to and including N(R)-1;
+        /// </summary>
+        private int N_R = 0;
+
+        /// <summary>
+        /// Acknowledge State Variable V(A).
+        /// The acknowledge state variable exists within the TNC and is never sent. It contains the sequence number of
+        /// the last frame acknowledged by its peer [V(A)-1 equels the N(S) of the last acknowledged I frame].
+        /// </summary>
+        private int V_A = 0;
+
+        /// <summary>
+        /// Window Size Receive.
+        /// </summary>
+        private int k = 0;
+
+        
         public enum State_T
         {
             Disconnected = 0,
@@ -124,21 +168,19 @@ namespace OpenAX25_Protocol
         private long T1V = 100; // Next value for T1; default initial value is initial value of SRT
         private long T3V = 1000;
         private int N1 = 255; // Maximum number of octets in the information field of a frame, excluding inserted 0-bits
-        private int N2 = 16; // Maximum number of retries permitted
-        private int Vs = 0;
-        private int Va = 0;
-        private int Vr = 0;
+        private int N2 = 10; // Maximum number of retries permitted
+        private int N1R = 2048;
+        private int kR = 4;
+        private int T2 = 3000;
         private int RC = 0;
-        private int k = 0;
-        private int p = 0;
-        private int Ns = 0;
-        private int Nr = 0;
         private int SRejectException;
         private bool F = false; // Final bit
+        private bool P = false; // Poll bit
         private bool SREJEnabled;
         private readonly AX25Timer T1; // Outstanding I frame or P-bit.
         private readonly AX25Timer T3; // Idle supervision (keep alive).
         private readonly LinkMultiplexerStateMachine m_multiplexer;
+        private readonly AX25_I[] IFrameStore = new AX25_I[128];
 
         private static void OnT1Callback(object obj)
         {
@@ -178,6 +220,7 @@ namespace OpenAX25_Protocol
             switch (m_state)
             {
                 case State_T.Connected: Connected(p); break;
+                case State_T.TimerRecovery: TimerRecovery(p); break;
                 default: break;
             } // end switch //
         }
@@ -223,7 +266,7 @@ namespace OpenAX25_Protocol
                 case DataLinkPrimitive_T.DL_CONNECT_Request_T:
                     this.SAT = m_config.SAT;
                     this.T1V = 2 * this.SAT;
-                    EstablishDataLink();
+                    EstablishDataLink(((DL_CONNECT_Request)p).Version);
                     SetLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
                     break;
@@ -250,7 +293,7 @@ namespace OpenAX25_Protocol
                     F = ((AX25_SABM)f).PF;
                     if (AbleToEstablish())
                     {
-                        m_version = Version_T.V2_0;
+                        SetVersion(Version_T.V2_0);
                         EstablishFromAwait(AX25Modulo.MOD8);
                     }
                     else // Not able to establish:
@@ -262,7 +305,7 @@ namespace OpenAX25_Protocol
                     F = ((AX25_SABME)f).PF;
                     if (AbleToEstablish())
                     {
-                        m_version = Version_T.V2_2;
+                        SetVersion(Version_T.V2_2);
                         EstablishFromAwait(AX25Modulo.MOD128);
                     }
                     else // Not able to establish:
@@ -295,7 +338,7 @@ namespace OpenAX25_Protocol
             switch (p.DataLinkPrimitiveType)
             {
                 case DataLinkPrimitive_T.DL_CONNECT_Request_T:
-                    DiscardQueue();
+                    DiscardIFrameQueue();
                     SetLayer3Initiated();
                     break;
                 case DataLinkPrimitive_T.DL_DISCONNECT_Request_T:
@@ -333,7 +376,7 @@ namespace OpenAX25_Protocol
                 case AX25Frame_T.DM:
                     if (((AX25_DM)f).PF)
                     {
-                        DiscardFrameQueue();
+                        DiscardIFrameQueue();
                         Output(new DL_DISCONNECT_Indication(this));
                         T1.Stop();
                         m_state = State_T.Disconnected;
@@ -345,8 +388,8 @@ namespace OpenAX25_Protocol
                         if (IsLayer3Initiated()) {
                             Output(new DL_CONNECT_Confirm(this));
                         } else {
-                            if (Vs != Va) {
-                                DiscardQueue();
+                            if (V_S != V_A) {
+                                DiscardIFrameQueue();
                                 Output(new DL_CONNECT_Indication(this, m_modulo));
                             }
                         }
@@ -365,7 +408,97 @@ namespace OpenAX25_Protocol
                     Output(new AX25_DM(F));
                     m_state = State_T.AwaitingConnect2_2;
                     break;
+                default:
+                    break;
+            } // end switch //
+        }
 
+        private void AwaitingConnect2_2(DataLinkPrimitive p)
+        {
+            switch (p.DataLinkPrimitiveType)
+            {
+                case DataLinkPrimitive_T.DL_CONNECT_Request_T:
+                    DiscardIFrameQueue();
+                    SetLayer3Initiated();
+                    break;
+                case DataLinkPrimitive_T.DL_DISCONNECT_Request_T:
+                    Requeue();
+                    break;
+                case DataLinkPrimitive_T.DL_DATA_Request_T:
+                    if (!IsLayer3Initiated())
+                        PushFrameOnQueue(((DL_DATA_Request)p).Data);
+                    break;
+                case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
+                    UI_Command(((DL_UNIT_DATA_Request)p).Data);
+                    break;
+                default:
+                    break;
+            } // end switch //
+        }
+
+        private void AwaitingConnect2_2(AX25Frame f)
+        {
+            switch (f.FrameType)
+            {
+                case AX25Frame_T.UI:
+                    UI_Check((AX25_UI)f);
+                    if (P)
+                        Output(new AX25_DM(true));
+                    break;
+                case AX25Frame_T.SABM:
+                    F = P;
+                    Output(new AX25_UA(F));
+                    m_state = State_T.AwaitingConnect;
+                    break;
+                case AX25Frame_T.DISC:
+                    F = P;
+                    Output(new AX25_DM(F));
+                    break;
+                case AX25Frame_T.DM:
+                    if (F)
+                    {
+                        DiscardIFrameQueue();
+                        Output(new DL_DISCONNECT_Indication(this));
+                        T1.Stop();
+                        m_state = State_T.Disconnected;
+                    }
+                    break;
+                case AX25Frame_T.UA:
+                    if (!F) {
+                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorD));
+                        break;
+                    }
+                    if (Layer3Initiated)
+                    {
+                        Output(new DL_CONNECT_Confirm(this));
+                    }
+                    else
+                    {
+                        if (V_S != V_A)
+                        {
+                            DiscardIFrameQueue();
+                            Output(new DL_CONNECT_Indication(this, m_modulo));
+                        }
+                    }
+                    T1.Stop();
+                    T3.Stop();
+                    V_S = 0;
+                    V_A = 0;
+                    V_R = 0;
+                    SelectT1Value();
+                    m_state = State_T.Connected;
+                    break;
+                case AX25Frame_T.SABME:
+                    F = P;
+                    Output(new AX25_UA(F));
+                    break;
+                case AX25Frame_T.FRMR:
+                    SRT = m_config.SRT;
+                    T1V = m_config.SRT * 2;
+                    EstablishDataLink(Version_T.V2_2);
+                    SetLayer3Initiated();
+                    m_state = State_T.AwaitingConnect;
+                    break;
                 default:
                     break;
             } // end switch //
@@ -442,7 +575,10 @@ namespace OpenAX25_Protocol
             switch (p.DataLinkPrimitiveType)
             {
                 case DataLinkPrimitive_T.DL_CONNECT_Request_T:
-                    Error();
+                    DiscardIFrameQueue();
+                    EstablishDataLink(m_version);
+                    SetLayer3Initiated();
+                    m_state = State_T.AwaitingConnect;
                     break;
                 case DataLinkPrimitive_T.DL_DISCONNECT_Request_T:
                     DiscardIFrameQueue();
@@ -458,17 +594,17 @@ namespace OpenAX25_Protocol
                 case DataLinkPrimitive_T.DL_FLOW_OFF_Request_T:
                     if (!OwnReceiverBusy)
                     {
-                        SetOwnReceiverBusy();
-                        Output(new AX25_RNR(m_modulo, Nr, false));
-                        ClearAcknowledgePending();
+                        OwnReceiverBusy = true;
+                        Output(new AX25_RNR(m_modulo, N_R, false));
+                        AcknowledgePending = false;;
                     }
                     break;
                 case DataLinkPrimitive_T.DL_FLOW_ON_Request_T:
                     if (OwnReceiverBusy)
                     {
-                        ClearOwnReceiverBusy();
-                        Output(new AX25_RR(m_modulo, Nr, true));
-                        ClearAcknowledgePending();
+                        OwnReceiverBusy = false;
+                        Output(new AX25_RR(m_modulo, N_R, true));
+                        AcknowledgePending = false;;
                         if (!T1.Running)
                         {
                             T3.Stop();
@@ -491,7 +627,7 @@ namespace OpenAX25_Protocol
                 case LinkMultiplexerPrimitive_T.LM_SEIZE_Confirm_T:
                     if (AcknowledgePending)
                     {
-                        ClearAcknowledgePending();
+                        AcknowledgePending = false;;
                         EnquiryResponse(false);
                     }
                     Output(new LM_RELEASE_Request(m_multiplexer));
@@ -511,7 +647,7 @@ namespace OpenAX25_Protocol
                     Output(new AX25_UA(F));
                     ClearExceptionConditions();
                     Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorF));
-                    if (Vs != Va) {
+                    if (V_S != V_A) {
                         DiscardIFrameQueue();
                         Output(new DL_CONNECT_Indication(this, m_modulo));
                     }
@@ -529,21 +665,21 @@ namespace OpenAX25_Protocol
                     break;
                 case AX25Frame_T.UA:
                     Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorC));
-                    EstablishDataLink();
+                    EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
                     break;
                 case AX25Frame_T.DM:
                     Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorE));
                     Output(new DL_DISCONNECT_Indication(this));
-                    DiscardIQueue();
+                    DiscardIFrameQueue();
                     T1.Stop();
                     T3.Stop();
                     m_state = State_T.Disconnected;
                     break;
                 case AX25Frame_T.FRMR:
                     Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
-                    EstablishDataLink();
+                    EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
                     break;
@@ -553,9 +689,9 @@ namespace OpenAX25_Protocol
                         EnquiryResponse(true);
                     break;
                 case AX25Frame_T.RR:
-                    ClearPeerReceiverBusy();
-                    CheckNeedForResponse();
-                    if ((Va <= Nr) && (Nr <= Vs))
+                    PeerReceiverBusy = false;
+                    CheckNeedForResponse(f);
+                    if ((V_A <= N_R) && (N_R <= V_S))
                     {
                         CheckIFrameAcknowledged();
                     }
@@ -566,9 +702,9 @@ namespace OpenAX25_Protocol
                     }
                     break;
                 case AX25Frame_T.RNR:
-                    SetPeerReceiverBusy();
-                    CheckNeedForResponse();
-                    if ((Va <= Nr) && (Nr <= Vs))
+                    PeerReceiverBusy = true;
+                    CheckNeedForResponse(f);
+                    if ((V_A <= N_R) && (N_R <= V_S))
                     {
                         CheckIFrameAcknowledged();
                     }
@@ -579,16 +715,16 @@ namespace OpenAX25_Protocol
                     }
                     break;
                 case AX25Frame_T.SREJ:
-                    ClearPeerReceiverBusy();
-                    CheckNeedForResponse();
-                    if ((Va <= Nr) && (Nr <= Vs))
+                    PeerReceiverBusy = false;
+                    CheckNeedForResponse(f);
+                    if ((V_A <= N_R) && (N_R <= V_S))
                     {
                         if (((AX25_SREJ)f).PF)
-                            Va = Nr;
+                            V_A = N_R;
                         T1.Stop();
                         T3.Start(T3V);
                         SelectT1Value();
-                        PushOldIFrameNrOnQueue();
+                        PushOldIFrameOnQueue();
                     }
                     else
                     {
@@ -597,15 +733,15 @@ namespace OpenAX25_Protocol
                     }
                     break;
                 case AX25Frame_T.REJ:
-                    ClearPeerReceiverBusy();
-                    CheckNeedForResponse();
-                    if ((Va > Nr) || (Nr > Vs))
+                    PeerReceiverBusy = false;
+                    CheckNeedForResponse(f);
+                    if ((V_A > N_R) || (N_R > V_S))
                     {
                         NrErrorRecovery();
                         m_state = State_T.AwaitingConnect;
                         break;
                     }
-                    Va = Nr;
+                    V_A = N_R;
                     T1.Stop();
                     T3.Stop();
                     SelectT1Value();
@@ -615,7 +751,6 @@ namespace OpenAX25_Protocol
                     if (!((AX25_I)f).P)
                     {
                         Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorS));
-                        DiscardIFrame();
                         break;
                     }
                     if (((AX25_I)f).InfoFieldLength > N1)
@@ -625,7 +760,7 @@ namespace OpenAX25_Protocol
                         m_state = State_T.AwaitingConnect;
                         break;
                     }
-                    if ((Va > Nr) || (Nr > Vs))
+                    if ((V_A > N_R) || (N_R > V_S))
                     {
                         NrErrorRecovery();
                         m_state = State_T.AwaitingConnect;
@@ -634,63 +769,65 @@ namespace OpenAX25_Protocol
                     CheckIFrameAcknowledged();
                     if (OwnReceiverBusy)
                     {
-                        DiscardContentsOfIFrame();
+                        IFrameStore[V_R] = null;
                         if (((AX25_I)f).P)
                         {
                             F = true;
-                            Nr = Vr;
-                            Output(new AX25_RNR(m_modulo, Nr, F));
-                            ClearAcknowledgePending();
+                            N_R = V_R;
+                            Output(new AX25_RNR(m_modulo, N_R, F));
+                            AcknowledgePending = false;;
                         }
                         break;
                     }
-                    if (Ns != Vr)
+                    if (N_S != V_R)
                     {
                         if (!RejectException)
                         {
                             if (SREJEnabled)
                             {
-                                SaveContentsOfIFrame(((AX25_I)f).I);
+                                IFrameStore[V_R] = (AX25_I)f;
                                 if (SRejectException > 0)
                                 {
-                                    Nr = Ns;
+                                    N_R = N_S;
                                     F = false;
                                 }
                                 else
                                 {
-                                    if (Ns > Vr + 1)
+                                    if (N_S > V_R + 1)
                                     {
-                                        DiscardContentsOfIFrame();
-                                        SetRejectException();
+                                        IFrameStore[V_R] = null;
+                                        RejectException = true;
+                                        SRejectException = 0;
                                         F = (((AX25_I)f).P);
-                                        Output(new AX25_REJ(m_modulo, Nr, F));
-                                        ClearAcknowledgePending();
+                                        Output(new AX25_REJ(m_modulo, N_R, F));
+                                        AcknowledgePending = false;;
                                         break;
                                     }
-                                    Nr = Vr;
+                                    N_R = V_R;
                                     F = true;
-                                    IncrementSRejectException();
-                                    Output(new AX25_SREJ(m_modulo, Nr, F));
-                                    ClearAcknowledgePending();
+                                    SRejectException += 1;
+                                    Output(new AX25_SREJ(m_modulo, N_R, F));
+                                    AcknowledgePending = false;;
                                     break;
                                 }
                             }
-                            DiscardContentsOfIFrame();
-                            SetRejectException();
+                            IFrameStore[V_R] = null;
+                            RejectException = true;
+                            SRejectException = 0;
                             F = ((AX25_I)f).P;
-                            Nr = Vr;
-                            Output(new AX25_REJ(m_modulo, Nr, F));
-                            ClearAcknowledgePending();
+                            N_R = V_R;
+                            Output(new AX25_REJ(m_modulo, N_R, F));
+                            AcknowledgePending = false;;
                             break;
                         }
                         // RejectException
-                        DiscardContentsOfIFrame();
+                        IFrameStore[V_R] = null;
                         if (!((AX25_I)f).P)
                             break;
                         F = true;
-                        Nr = Vr;
-                        Output(new AX25_RR(m_modulo, Nr, F));
-                        ClearAcknowledgePending();
+                        N_R = V_R;
+                        Output(new AX25_RR(m_modulo, N_R, F));
+                        AcknowledgePending = false;;
                     }
                     break;
                 default:
@@ -702,7 +839,10 @@ namespace OpenAX25_Protocol
         {
             switch (p.DataLinkPrimitiveType) {
                 case DataLinkPrimitive_T.DL_CONNECT_Request_T:
-                    Error();
+                    DiscardIFrameQueue();
+                    EstablishDataLink(m_version);
+                    SetLayer3Initiated();
+                    m_state = State_T.AwaitingConnect;
                     break;
                 case DataLinkPrimitive_T.DL_DISCONNECT_Request_T:
                     DiscardIFrameQueue();
@@ -718,23 +858,43 @@ namespace OpenAX25_Protocol
                 case DataLinkPrimitive_T.DL_FLOW_OFF_Request_T:
                     if (!OwnReceiverBusy)
                     {
-                        SetOwnReceiverBusy();
-                        Output(new AX25_RNR(m_modulo, Nr, false));
-                        ClearAcknowledgePending();
+                        OwnReceiverBusy = true;
+                        Output(new AX25_RNR(m_modulo, N_R, false));
+                        AcknowledgePending = false;;
                     }
                     break;
                 case DataLinkPrimitive_T.DL_FLOW_ON_Request_T:
                     if (OwnReceiverBusy)
                     {
-                        ClearOwnReceiverBusy();
-                        Output(new AX25_RR(m_modulo, Nr, true));
-                        ClearAcknowledgePending();
+                        OwnReceiverBusy = false;
+                        Output(new AX25_RR(m_modulo, N_R, true));
+                        AcknowledgePending = false;;
                         if (!T1.Running)
                         {
                             T3.Stop();
                             T1.Start(T1V);
                         }
                     }
+                    break;
+                case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
+                    UI_Command(((DL_UNIT_DATA_Request)p).Data);
+                    break;
+                default:
+                    break;
+            } // end switch //
+        }
+
+        private void TimerRecovery(LinkMultiplexerPrimitive p)
+        {
+            switch (p.LinkMultiplexerPrimitiveType)
+            {
+                case LinkMultiplexerPrimitive_T.LM_SEIZE_Confirm_T:
+                    if (AcknowledgePending)
+                    {
+                        AcknowledgePending = false;;
+                        EnquiryResponse(false);
+                    }
+                    Output(new LM_SEIZE_Request(m_multiplexer));
                     break;
                 default:
                     break;
@@ -746,24 +906,229 @@ namespace OpenAX25_Protocol
             switch (f.FrameType)
             {
                 case AX25Frame_T.SABM:
-                    m_version = Version_T.V2_0;
+                    SetVersion(Version_T.V2_0);
                     EstablishFromRecover(AX25Modulo.MOD8, ((AX25_SABM)f).PF);
                     break;
                 case AX25Frame_T.SABME:
-                    m_version = Version_T.V2_2;
+                    SetVersion(Version_T.V2_2);
                     EstablishFromRecover(AX25Modulo.MOD128, ((AX25_SABM)f).PF);
                     break;
-
-                    
+                case AX25Frame_T.RR:
+                case AX25Frame_T.RNR:
+                    if (f.FrameType == AX25Frame_T.RR)
+                        PeerReceiverBusy = false;
+                    else
+                        PeerReceiverBusy = true;
+                    if ((!((AX25SFrame)f).PF) && F) {
+                        T1.Stop();
+                        SelectT1Value();
+                        if ((V_A <= N_R) && (N_R <= V_S)) {
+                            V_A = N_R;
+                            if (V_S == V_A) {
+                                T3.Start(T3V);
+                                m_state = State_T.Connected;
+                                break;
+                            }
+                            InvokeRetransmission();
+                                break;
+                        }
+                        NrErrorRecovery();
+                        m_state = State_T.AwaitingConnect;
+                        break;
+                    }
+                    if ((((AX25SFrame)f).PF) && P)
+                        EnquiryResponse(true);
+                    if ((V_A <= N_R) && (N_R <= V_S)) {
+                        V_A = N_R;
+                        break;
+                    }
+                    NrErrorRecovery();
+                    m_state = State_T.AwaitingConnect;
+                    break;
+                case AX25Frame_T.DISC:
+                    DiscardIFrameQueue();
+                    F = P;
+                    Output(new AX25_UA(F));
+                    Output(new DL_DISCONNECT_Indication(this));
+                    T1.Stop();
+                    T3.Stop();
+                    m_state = State_T.Disconnected;
+                    break;
+                case AX25Frame_T.UA:
+                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorC));
+                    EstablishDataLink(m_version);
+                    ClearLayer3Initiated();
+                    m_state = State_T.AwaitingConnect;
+                    break;
+                case AX25Frame_T.UI:
+                    UI_Check((AX25_UI)f);
+                    if (P)
+                        EnquiryResponse(true);
+                    break;
+                case AX25Frame_T.REJ:
+                    PeerReceiverBusy = false;
+                    if ((!((AX25_REJ)f).PF) && F)
+                    {
+                        T1.Stop();
+                        SelectT1Value();
+                        if ((V_A <= N_R) && (N_R <= V_S))
+                        {
+                            V_A = N_R;
+                            if (V_S == V_A)
+                            {
+                                T3.Start(T3V);
+                                m_state = State_T.Connected;
+                                break;
+                            }
+                            InvokeRetransmission();
+                            break;
+                        }
+                        NrErrorRecovery();
+                        m_state = State_T.AwaitingConnect;
+                        break;
+                    }
+                    V_A = N_R;
+                    if (V_S != V_A)
+                        InvokeRetransmission();
+                    break;
+                case AX25Frame_T.DM:
+                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
+                    EstablishDataLink(m_version);
+                    ClearLayer3Initiated();
+                    m_state = State_T.AwaitingConnect;
+                    break;
+                case AX25Frame_T.SREJ:
+                    PeerReceiverBusy = false;
+                    if (!((AX25_SREJ)f).PF) {
+                        T1.Stop();
+                        SelectT1Value();
+                        if ((V_A > N_R) || (N_R > V_S)) {
+                            NrErrorRecovery();
+                            m_state = State_T.AwaitingConnect;
+                            break;
+                        }
+                        if (F)
+                            V_A = N_R;
+                        if (V_S == V_A) {
+                            T3.Start(T3V);
+                            m_state = State_T.Connected;
+                            break;
+                        }
+                        PushIFrameOnQueue();
+                        break;
+                    }
+                    if ((V_A > N_R) || (N_R > V_S)) {
+                        NrErrorRecovery();
+                        m_state = State_T.AwaitingConnect;
+                        break;
+                    }
+                    if (P)
+                        V_A = N_R;
+                    if (V_S != V_A)
+                        PushIFrameOnQueue();
+                    break;
+                case AX25Frame_T.I:
+                    if (!((AX25_I)f).P)
+                    {
+                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorS));
+                        break;
+                    }
+                    if (((AX25_I)f).InfoFieldLength <= N1)
+                    {
+                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorO));
+                        EstablishDataLink(m_version);
+                        ClearLayer3Initiated();
+                        m_state = State_T.AwaitingConnect;
+                        break;
+                    }
+                    if ((V_A > N_R) || (N_R > V_S))
+                    {
+                        NrErrorRecovery();
+                        m_state = State_T.AwaitingConnect;
+                        break;
+                    }
+                    V_A = N_R;
+                    if (OwnReceiverBusy)
+                    {
+                        IFrameStore[V_R] = null;
+                        if (P)
+                        {
+                            F = true;
+                            N_R = V_R;
+                            Output(new AX25_RNR(m_modulo, N_R, F));
+                            AcknowledgePending = false;;
+                        }
+                        break;
+                    }
+                    if (N_S == V_R) {
+                        V_R += 1;
+                        RejectException = false;
+                        SRejectException = 0;
+                        if (SRejectException > 0)
+                            SRejectException -= 1;
+                        Output(new DL_DATA_Indication(this, ((AX25_I)f).I));
+                        while (IFrameStore[V_R] != null) {
+                            Output(new DL_DATA_Indication(this, IFrameStore[V_R].I));
+                            V_R += 1;
+                        } // end while //
+                        if (!P) {
+                            if (!AcknowledgePending) {
+                                Output(new LM_SEIZE_Request(m_multiplexer));
+                                AcknowledgePending = true;
+                            }
+                            break;
+                        }
+                        F = true;
+                        N_R = V_R;
+                        Output(new AX25_RR(m_modulo, N_R, F));
+                        AcknowledgePending = false;;
+                        break;
+                    }
+                    if (RejectException) {
+                        IFrameStore[V_R] = null;
+                        if (P) {
+                            F = true;
+                            N_R = V_R;
+                            Output(new AX25_RR(m_modulo, N_R, F));
+                        }
+                        break;
+                    }
+                    if (!SREJEnabled) {
+                        IFrameStore[V_R] = null;
+                        if (P) {
+                            RejectException = true;
+                            SRejectException = 0;
+                            F = P;
+                            N_R = V_R;
+                            Output(new AX25_REJ(m_modulo, N_R, F));
+                            AcknowledgePending = false;;
+                        }
+                        break;
+                    }
+                    IFrameStore[V_R] = (AX25_I)f;
+                    if (SRejectException > 0) {
+                        N_R = N_S;
+                        F = false;
+                    } else {
+                        if (N_S > V_R + 1) {
+                            IFrameStore[V_R] = null;
+                            RejectException = true;
+                            SRejectException = 0;
+                            F = P;
+                            Output(new AX25_REJ(m_modulo, N_R, F));
+                            AcknowledgePending = false;;
+                            break;
+                        }
+                        N_R = V_R;
+                        F = true;
+                    }
+                    SRejectException += 1;
+                    Output(new AX25_SREJ(m_modulo, N_R, F));
+                    AcknowledgePending = false;;
+                    break;
+                default:
+                    break;
             } // end switch //
-        }
-
-        private void AwaitingConnect2_2(DataLinkPrimitive p)
-        {
-        }
-
-        private void AwaitingConnect2_2(AX25Frame f)
-        {
         }
 
         private void TimerT1Expiry()
@@ -773,7 +1138,23 @@ namespace OpenAX25_Protocol
                 case State_T.AwaitingConnect:
                     if (RC == N2)
                     {
-                        DiscardFrameQueue();
+                        DiscardIFrameQueue();
+                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorG));
+                        Output(new DL_DISCONNECT_Indication(this));
+                        m_state = State_T.Disconnected;
+                    }
+                    else
+                    {
+                        RC += 1;
+                        Output(new AX25_SABME(true));
+                        SelectT1Value();
+                        T1.Start(T1V);
+                    }
+                    break;
+                case State_T.AwaitingConnect2_2:
+                    if (RC == N2)
+                    {
+                        DiscardIFrameQueue();
                         Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorG));
                         Output(new DL_DISCONNECT_Indication(this));
                         m_state = State_T.Disconnected;
@@ -806,6 +1187,25 @@ namespace OpenAX25_Protocol
                     TransmitEnquiry();
                     m_state = State_T.TimerRecovery;
                     break;
+                case State_T.TimerRecovery:
+                    if (RC == N2)
+                    {
+                        RC += 1;
+                        TransmitEnquiry();
+                        break;
+                    }
+                    if (V_A == V_S) 
+                        if (PeerReceiverBusy)
+                            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorU));
+                        else
+                            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorT));
+                    else
+                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorI));
+                    Output(new DL_DISCONNECT_Request(this));
+                    DiscardIFrameQueue();
+                    Output(new AX25_DM(F));
+                    m_state = State_T.Disconnected;
+                    break;
                 default:
                     break;
             } // end switch //
@@ -825,23 +1225,11 @@ namespace OpenAX25_Protocol
             } // end switch //
         }
 
-        private void TransmitEnquiry()
-        {
-        }
-
-        private void EnquiryResponse(bool f)
-        {
-        }
-
         private void UI_Command(byte[] data)
         {
         }
 
         private void I_Command(byte[] data)
-        {
-        }
-
-        private void EstablishDataLink()
         {
         }
 
@@ -863,33 +1251,36 @@ namespace OpenAX25_Protocol
         private void ControlFieldError() {
             Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorL));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
-                Error();
+            {
+                DiscardIFrameQueue();
+                EstablishDataLink(m_version);
+                SetLayer3Initiated();
+                m_state = State_T.AwaitingConnect;
+            }
         }
 
         private void InfoNotPermittedInFrame()
         {
             Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorM));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
-                Error();
+            {
+                DiscardIFrameQueue();
+                EstablishDataLink(m_version);
+                SetLayer3Initiated();
+                m_state = State_T.AwaitingConnect;
+            }
         }
 
         private void IncorrectUorSFrameLength()
         {
             Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorN));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
-                Error();
-        }
-
-        private void Error()
-        {
-            DiscardIFrameQueue();
-            EstablishDataLink();
-            SetLayer3Initiated();
-            m_state = State_T.AwaitingConnect;
-        }
-
-        private void UI_Check(AX25_UI f)
-        {
+            {
+                DiscardIFrameQueue();
+                EstablishDataLink(m_version);
+                SetLayer3Initiated();
+                m_state = State_T.AwaitingConnect;
+            }
         }
 
         private bool AbleToEstablish()
@@ -902,9 +1293,9 @@ namespace OpenAX25_Protocol
             m_modulo = modulo;
             Output(new AX25_UA(F));
             ClearExceptionConditions();
-            Vs = 0;
-            Va = 0;
-            Vr = 0;
+            V_S = 0;
+            V_A = 0;
+            V_R = 0;
             Output(new DL_CONNECT_Indication(this, modulo));
             SRT = m_config.SRT;
             T1V = 2 * SRT;
@@ -919,38 +1310,17 @@ namespace OpenAX25_Protocol
             Output(new AX25_UA(F));
             ClearExceptionConditions();
             Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorF));
-            if (Vs != Va)
+            if (V_S != V_A)
             {
                 DiscardIFrameQueue();
                 Output(new DL_CONNECT_Indication(this, m_modulo));
             }
             T1.Stop();
             T3.Start(T3V);
-            Vs = 0;
-            Va = 0;
-            Vr = 0;
+            V_S = 0;
+            V_A = 0;
+            V_R = 0;
             m_state = State_T.Connected;
-        }
-
-        private void ClearExceptionConditions()
-        {
-            PeerReceiverBusy = false;
-            OwnReceiverBusy  = false;
-            RejectException = false;
-            SelectiveRejectException = false;
-            AcknowledgePending = false;
-        }
-
-        private void DiscardQueue()
-        {
-        }
-
-        private void DiscardIQueue()
-        {
-        }
-
-        private void DiscardFrameQueue()
-        {
         }
 
         private void DiscardIFrameQueue()
@@ -991,104 +1361,212 @@ namespace OpenAX25_Protocol
             switch (m_state)
             {
                 case State_T.Connected:
+                case State_T.TimerRecovery:
                     if (PeerReceiverBusy)
                     {
                         PushIFrameOnQueue(data);
                         break;
                     }
-                    if (Vs == Va + k)
+                    if (V_S == V_A + k)
                     {
                         PushIFrameOnQueue(data);
                         break;
                     }
-                    Ns = Vs;
-                    Nr = Vr;
-                    p = 0;
+                    N_S = V_S;
+                    N_R = V_R;
+                    P = false;
                     I_Command(data);
-                    Vs += 1;
-                    AcknowledgePending = false;
+                    V_S += 1;
+                    AcknowledgePending = false;;
                     if (!T1.Running)
                     {
                         T3.Stop();
                         T1.Start(T1V);
                     }
                     break;
+                case State_T.AwaitingConnect2_2:
+                    if (!Layer3Initiated)
+                        PushIFrameOnQueue(data);
+                    break;
                 default:
                     break;
             } // end switch //
         }
 
-        private void PushOldIFrameNrOnQueue()
-        {
-        }
-
-        private void SelectT1Value()
-        {
-            T1V = T1.Elapsed;
-        }
-
-        private void SetOwnReceiverBusy()
-        {
-            OwnReceiverBusy = true;
-        }
-
-        private void ClearOwnReceiverBusy()
-        {
-            OwnReceiverBusy = true;
-        }
-
-        private void ClearAcknowledgePending()
-        {
-            AcknowledgePending = false;
-        }
-
-        private void SetPeerReceiverBusy()
-        {
-            PeerReceiverBusy = true;
-        }
-
-        private void ClearPeerReceiverBusy()
-        {
-            PeerReceiverBusy = false;
-        }
-
-        private void CheckNeedForResponse()
-        {
-        }
-
-        private void CheckIFrameAcknowledged()
-        {
-        }
+        /****************************************************************************/
+        /************************** Official subroutines ****************************/
+        /****************************************************************************/
 
         private void NrErrorRecovery()
         {
+            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorJ));
+            EstablishDataLink(m_version);
+            ClearLayer3Initiated();
+        }
+
+        private void EstablishDataLink(Version_T version)
+        {
+            ClearExceptionConditions();
+            RC = 0;
+            P = true;
+            if (version == Version_T.V2_0)
+                Output(new AX25_SABM(P));
+            else
+                Output(new AX25_SABME(P));
+            T3.Stop();
+            T1.Start(T1V);
+        }
+
+        private void ClearExceptionConditions()
+        {
+            PeerReceiverBusy = false;
+            RejectException = false;
+            OwnReceiverBusy = false;
+            AcknowledgePending = false;
+        }
+
+        private void TransmitEnquiry()
+        {
+            P = true;
+            N_R = V_R;
+            if (OwnReceiverBusy)
+                Output(new AX25_RNR(m_modulo, N_R, P));
+            else
+                Output(new AX25_RR(m_modulo, N_R, P));
+            AcknowledgePending = false;
+            T1.Start(T1V);
+        }
+
+        private void EnquiryResponse(bool pf)
+        {
+            N_R = V_R;
+            if (OwnReceiverBusy)
+                Output(new AX25_RNR(m_modulo, N_R, pf));
+            else
+                Output(new AX25_RR(m_modulo, N_R, pf));
+            AcknowledgePending = false;
         }
 
         private void InvokeRetransmission()
         {
+            Backtrack();
+            int x = V_S;
+            V_S = N_R;
+            do
+            {
+                PushOldIFrameOnQueue();
+                V_S += 1;
+            } while (V_S != x);
         }
 
-        private void DiscardIFrame()
+        private void CheckIFrameAcknowledged()
+        {
+            if (PeerReceiverBusy)
+            {
+                V_A = N_R;
+                T3.Start(T3V);
+                if (!T1.Running)
+                    T1.Start(T1V);
+                return;
+
+            }
+            if (N_R == V_S)
+            {
+                V_A = N_R;
+                T1.Stop();
+                T3.Start(T3V);
+                SelectT1Value();
+                return;
+            }
+            if (N_R != V_A)
+            {
+                V_A = N_R;
+                T1.Start(T1V);
+                return;
+            }
+        }
+
+        private void CheckNeedForResponse(AX25Frame f)
+        {
+            if (f.Command && P)
+                EnquiryResponse(true);
+            else
+                if ((f.Response) && F)
+                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorA));
+        }
+
+        private void UI_Check(AX25_UI f)
+        {
+            if (f.Command)
+            {
+                if (f.InfoFieldLength > N1)
+                {
+                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
+                }
+                else
+                {
+                    Output(new DL_UNIT_DATA_Indication(this, f.I));
+                }
+            }
+            else
+            {
+                Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorQ));
+            }
+        }
+
+        private void SelectT1Value()
+        {
+            const decimal sevenEigth = 7.0M / 8.0M;
+            const decimal oneEigth = 1.0M / 8.0M;
+
+            if (RC == 0)
+            {
+                SRT = Decimal.ToInt64(Math.Round(
+                    sevenEigth * SRT
+                    + oneEigth * T1V
+                    - oneEigth * T1.RemainingLastStopped));
+                T1V = 2 * SRT;
+            } else {
+                if (!T1.Running)
+                    T1V = 2 ^ (RC + 1) * SRT;
+            }
+        }
+
+        private void SetVersion(Version_T version)
+        {
+            switch (version)
+            {
+                case Version_T.V2_0:
+                    m_modulo = AX25Modulo.MOD8;
+                    N1R = 2048;
+                    kR = 4;
+                    T2 = 3000;
+                    N2 = 10;
+                    break;
+                case Version_T.V2_2:
+                    m_modulo = AX25Modulo.MOD128;
+                    N1R = 2048;
+                    kR = 32;
+                    T2 = 3000;
+                    N2 = 10;
+                    break;
+            } // end switch //
+        }
+
+        /****************************************************************************/
+        /************************** Private subroutines *****************************/
+        /****************************************************************************/
+
+        private void Backtrack()
         {
         }
 
-        private void SaveContentsOfIFrame(byte[] data)
+        private void PushOldIFrameOnQueue()
         {
         }
 
-        private void DiscardContentsOfIFrame()
+        private void PushIFrameOnQueue()
         {
-        }
-
-        private void SetRejectException()
-        {
-            RejectException = true;
-            SRejectException = 0;
-        }
-
-        private void IncrementSRejectException()
-        {
-            SRejectException += 1;
         }
 
     }

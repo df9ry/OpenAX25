@@ -168,6 +168,14 @@ namespace OpenAX25_Protocol
             }
         }
 
+        public override bool Poll
+        {
+            get
+            {
+                return P;
+            }
+        }
+
         protected override void ToString(StringBuilder sb)
         {
             sb.Append("I(R=");

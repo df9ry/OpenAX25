@@ -8,6 +8,7 @@ namespace OpenAX25_Protocol
 
     internal enum LinkMultiplexerPrimitive_T
     {
+        LM_SEIZE_Request_T,
         LM_SEIZE_Confirm_T,
         LM_RELEASE_Request_T
     }
@@ -16,6 +17,7 @@ namespace OpenAX25_Protocol
     {
 
         private static readonly IDictionary<LinkMultiplexerPrimitive_T, string> N = new Dictionary<LinkMultiplexerPrimitive_T, string> {
+            { LinkMultiplexerPrimitive_T.LM_SEIZE_Request_T,    "LM_SEIZE_Request"  },
             { LinkMultiplexerPrimitive_T.LM_SEIZE_Confirm_T,    "LM_SEIZE_Confirm"  },
             { LinkMultiplexerPrimitive_T.LM_RELEASE_Request_T, "LM_RELEASE_Request" }
         };
@@ -34,6 +36,22 @@ namespace OpenAX25_Protocol
             get
             {
                 return N[LinkMultiplexerPrimitiveType];
+            }
+        }
+    }
+
+    internal sealed class LM_SEIZE_Request : LinkMultiplexerPrimitive
+    {
+        internal LM_SEIZE_Request(LinkMultiplexerStateMachine mlsm)
+            : base(mlsm)
+        {
+        }
+
+        internal override LinkMultiplexerPrimitive_T LinkMultiplexerPrimitiveType
+        {
+            get
+            {
+                return LinkMultiplexerPrimitive_T.LM_SEIZE_Request_T;
             }
         }
     }

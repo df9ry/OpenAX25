@@ -63,13 +63,22 @@ namespace OpenAX25_Protocol
     {
         private readonly AX25Modulo m_modulo;
 
-        internal DL_CONNECT_Request(DataLinkStateMachine dlsm, AX25Modulo modulo)
+        internal DL_CONNECT_Request(DataLinkStateMachine dlsm, AX25Modulo modulo = AX25Modulo.MOD8)
             : base(dlsm)
         {
+            if (modulo == AX25Modulo.UNSPECIFIED)
+                modulo = AX25Modulo.MOD8;
             m_modulo = modulo;
         }
 
-        internal override DataLinkPrimitive_T DataLinkPrimitiveType {
+        internal DL_CONNECT_Request(DataLinkStateMachine dlsm, DataLinkStateMachine.Version_T version)
+            : base(dlsm)
+        {
+            m_modulo = (version == DataLinkStateMachine.Version_T.V2_0)?AX25Modulo.MOD8:AX25Modulo.MOD128;
+        }
+
+        internal override DataLinkPrimitive_T DataLinkPrimitiveType
+        {
             get {
                 return DataLinkPrimitive_T.DL_CONNECT_Request_T;
             }
@@ -80,6 +89,15 @@ namespace OpenAX25_Protocol
             get
             {
                 return m_modulo;
+            }
+        }
+
+        internal DataLinkStateMachine.Version_T Version
+        {
+            get {
+                return (m_modulo == AX25Modulo.MOD128)?
+                    DataLinkStateMachine.Version_T.V2_2:
+                    DataLinkStateMachine.Version_T.V2_0;
             }
         }
     }
