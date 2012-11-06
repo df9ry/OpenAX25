@@ -1,5 +1,5 @@
 ﻿//
-// L2Runtime.cs
+// Runtime.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -35,16 +35,16 @@ namespace OpenAX25Core
 	/// <summary>
 	/// Core runtime object for OpenAX25.
 	/// </summary>
-	public class L2Runtime
+	public class Runtime
 	{
 		
-		private IL2LogProvider m_logProvider = null;
-		private IL2MonitorProvider m_monitorProvider = null;
-		private L2LogLevel m_logLevel = L2LogLevel.INFO;
-		private IDictionary<string, IL2ChannelFactory> m_factories =
-			new Dictionary<string, IL2ChannelFactory>();
-		private IDictionary<string, IL2Channel> m_channels =
-			new Dictionary<string, IL2Channel>();
+		private ILogProvider m_logProvider = null;
+		private IMonitorProvider m_monitorProvider = null;
+		private LogLevel m_logLevel = LogLevel.INFO;
+		private IDictionary<string, IChannelFactory> m_factories =
+			new Dictionary<string, IChannelFactory>();
+		private IDictionary<string, IChannel> m_channels =
+			new Dictionary<string, IChannel>();
 		private UInt64 m_frameNo = 0;
         private XmlSchema m_configSchema = null;
         private string m_configFileName = "";
@@ -53,20 +53,21 @@ namespace OpenAX25Core
 		/// <summary>
 		/// The one and only runtime object.
 		/// </summary>
-		public static readonly L2Runtime Instance = new L2Runtime();
+		public static readonly Runtime Instance = new Runtime();
 		
 		/// <summary>
 		/// Creation of Runtime object is not possible.
 		/// </summary>
-		private L2Runtime()
+		private Runtime()
 		{
-            RegisterChannel(new NullChannel());
-		}
+            RegisterChannel(new L2NullChannel());
+            RegisterChannel(new L3NullChannel());
+        }
 		
 		/// <summary>
 		/// The log provider. If set to <c>null</c>, no logging is performed at all.
 		/// </summary>
-		public IL2LogProvider LogProvider {
+		public ILogProvider LogProvider {
 			get {
 				return m_logProvider;
 			}
@@ -78,7 +79,7 @@ namespace OpenAX25Core
 		/// <summary>
 		/// The log level to control the amount of data to display.
 		/// </summary>
-		public L2LogLevel LogLevel {
+		public LogLevel LogLevel {
 			get {
 				return m_logLevel;
 			}
@@ -90,7 +91,7 @@ namespace OpenAX25Core
 		/// <summary>
 		/// The monitor provider. If set to <c>null</c>, no monitoring is performed at all.
 		/// </summary>
-		public IL2MonitorProvider MonitorProvider {
+		public IMonitorProvider MonitorProvider {
 			get {
 				return m_monitorProvider;
 			}
@@ -128,7 +129,7 @@ namespace OpenAX25Core
 		/// <param name="level">The log level of this message.</param>
 		/// <param name="component">The originating component.</param>
 		/// <param name="message">The message</param>
-		public void Log(L2LogLevel level, string component, string message)
+		public void Log(LogLevel level, string component, string message)
 		{
 			if ((m_logProvider == null) || (level > m_logLevel))
 				return;
@@ -161,7 +162,7 @@ namespace OpenAX25Core
 		/// <param name="channelClassName">Channel class name (With or without the GUID</param>
 		/// <param name="properties">Channel properties for the new instance.</param>
 		/// <returns>New channel instance.</returns>
-		public IL2Channel CreateChannel(string channelClassName,
+		public IChannel CreateChannel(string channelClassName,
 		                                IDictionary<string,string> properties)
 		{
 			if (String.IsNullOrEmpty(channelClassName))
@@ -169,7 +170,7 @@ namespace OpenAX25Core
 			
 			// If the short name was specified, lookup the full name:
 			if (channelClassName.Split(new Char[] {':'}).Length < 2) {
-                Log(L2LogLevel.DEBUG, "L2Runtime", "Lookup long name of class: " + channelClassName);
+                Log(LogLevel.DEBUG, "Runtime", "Lookup long name of class: " + channelClassName);
                 // Find the long name.
 				string _channelClassName = channelClassName + ':';
 				foreach (string key in m_factories.Keys) {
@@ -179,10 +180,10 @@ namespace OpenAX25Core
 					}
 				} // end foreach //
 			}
-			IL2ChannelFactory factory;
+			IChannelFactory factory;
 			if (!m_factories.TryGetValue(channelClassName, out factory))
-				throw new L2FactoryNotFoundException(channelClassName);
-			Log(L2LogLevel.DEBUG, "L2Runtime", "Creating channel of class: " + factory.ChannelClass);
+				throw new FactoryNotFoundException(channelClassName);
+			Log(LogLevel.DEBUG, "Runtime", "Creating channel of class: " + factory.ChannelClass);
 			return factory.CreateChannel(properties);
 		}
 		
@@ -190,12 +191,12 @@ namespace OpenAX25Core
 		/// Register a channel factory on the Runtime.
 		/// </summary>
 		/// <param name="factory">ChannelFactory to register.</param>
-		public void RegisterFactory(IL2ChannelFactory factory)
+		public void RegisterFactory(IChannelFactory factory)
 		{
 			if (factory == null)
 				throw new ArgumentNullException("factory");
 			m_factories.Add(factory.ChannelClass, factory);
-			Log(L2LogLevel.INFO, "L2Runtime", "Registered factory: " + factory.ChannelClass);
+			Log(LogLevel.INFO, "Runtime", "Registered factory: " + factory.ChannelClass);
 		}
 		
 		/// <summary>
@@ -208,25 +209,25 @@ namespace OpenAX25Core
 		/// <param name="channel"></param>
 		/// <param name="name">Name to register the channel with. If not specified or <c>null</c>
 		/// the value of the <c>Name</c> property of the channel is used.</param>
-		public void RegisterChannel(IL2Channel channel, string name=null)
+		public void RegisterChannel(IChannel channel, string name=null)
 		{
 			if (channel == null)
 				throw new ArgumentNullException("channel");
 			if (String.IsNullOrEmpty(name))
 				name = channel.Name;
 			// Check if the channel is registered already:
-			IL2Channel _channel;
+			IChannel _channel;
 			if (m_channels.TryGetValue(name, out _channel)) {
 				if (_channel.GetHashCode() == channel.GetHashCode()) {
-					Log(L2LogLevel.INFO, "L2Runtime", "Reregistered channel " + name);
+					Log(LogLevel.INFO, "Runtime", "Reregistered channel " + name);
 					return; // Registered already
 				} else {
-					Log(L2LogLevel.INFO, "L2Runtime", "Channel name is already taken: " + name);
-					throw new L2DuplicateNameException("Name is choosen for another channel already: " + name);
+					Log(LogLevel.INFO, "Runtime", "Channel name is already taken: " + name);
+					throw new DuplicateNameException("Name is choosen for another channel already: " + name);
 				}
 			} else {
 				m_channels.Add(name, channel);
-				Log(L2LogLevel.INFO, "L2Runtime", "Registered channel " + name);
+				Log(LogLevel.INFO, "Runtime", "Registered channel " + name);
 			}
 		}
 		
@@ -235,16 +236,62 @@ namespace OpenAX25Core
 		/// </summary>
 		/// <param name="name">The name to lookup.</param>
 		/// <returns>Channel registered with this name of <c>null</c> if not found.</returns>
-		public IL2Channel LookupChannel(string name)
+		public IChannel LookupChannel(string name)
 		{
 			if (name == null)
 				throw new ArgumentNullException("name");
-			IL2Channel result;
+			IChannel result;
 			if (m_channels.TryGetValue(name, out result))
 				return result;
 			else
 				return null;
 		}
+
+        /// <summary>
+        /// Lookup a L2 channel with a name.
+        /// </summary>
+        /// <param name="name">The name to lookup.</param>
+        /// <returns>Channel registered with this name of <c>null</c> if not found.</returns>
+        public IL2Channel LookupL2Channel(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            IChannel result;
+            if (m_channels.TryGetValue(name, out result))
+            {
+                if (result is IL2Channel)
+                    return (IL2Channel)result;
+                else
+                    return null;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Lookup a L3 channel with a name.
+        /// </summary>
+        /// <param name="name">The name to lookup.</param>
+        /// <returns>Channel registered with this name of <c>null</c> if not found.</returns>
+        public IL3Channel LookupL3Channel(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            IChannel result;
+            if (m_channels.TryGetValue(name, out result))
+            {
+                if (result is IL3Channel)
+                    return (IL3Channel)result;
+                else
+                    return null;
+            }
+            else
+            {
+                return null;
+            }
+        }
 
         /// <summary>
         /// Load a channel assembly into the runtime.
@@ -260,8 +307,8 @@ namespace OpenAX25Core
                     Assembly.GetExecutingAssembly().Location), fileName);
 
             // Load assembly:
-            if (this.LogLevel >= L2LogLevel.DEBUG)
-                this.Log(L2LogLevel.DEBUG, "L2Runtime", String.Format("Loading assembly \"{0}\"", fileName));
+            if (this.LogLevel >= LogLevel.DEBUG)
+                this.Log(LogLevel.DEBUG, "Runtime", String.Format("Loading assembly \"{0}\"", fileName));
             Assembly a = Assembly.LoadFile(fileName);
             if (a == null)
                 throw new Exception(String.Format("Unable to load assembly \"{0}\"",
@@ -270,11 +317,11 @@ namespace OpenAX25Core
             // Lookup factories:
             foreach (Type t in a.GetTypes())
             {
-                if (t.GetInterfaces().Contains(typeof(IL2ChannelFactory)))
+                if (t.GetInterfaces().Contains(typeof(IChannelFactory)))
                 {
-                    if (this.LogLevel >= L2LogLevel.DEBUG)
-                        this.Log(L2LogLevel.DEBUG, "L2Runtime", String.Format("Create factory \"{0}\"", t.FullName));
-                    IL2ChannelFactory f = Activator.CreateInstance(t) as IL2ChannelFactory;
+                    if (this.LogLevel >= LogLevel.DEBUG)
+                        this.Log(LogLevel.DEBUG, "Runtime", String.Format("Create factory \"{0}\"", t.FullName));
+                    IChannelFactory f = Activator.CreateInstance(t) as IChannelFactory;
                     if (f == null)
                         throw new Exception(
                             String.Format("Unable to create instance of type \"{0}\"", t.FullName));
@@ -305,8 +352,8 @@ namespace OpenAX25Core
                 {
                     string configSchemaFile = Path.Combine(Path.GetDirectoryName(
                         Assembly.GetExecutingAssembly().Location), "OpenAX25Config.xsd");
-                    if (this.LogLevel >= L2LogLevel.DEBUG)
-                        this.Log(L2LogLevel.DEBUG, "L2Runtime",
+                    if (this.LogLevel >= LogLevel.DEBUG)
+                        this.Log(LogLevel.DEBUG, "Runtime",
                             String.Format("Loading config schema file \"{0}\"",
                             configSchemaFile));
                     StreamReader xsdReader = new StreamReader(configSchemaFile);
@@ -315,8 +362,8 @@ namespace OpenAX25Core
                 }
 
                 // Config the XML reader settings:
-                if (this.LogLevel >= L2LogLevel.DEBUG)
-                    this.Log(L2LogLevel.DEBUG, "L2Runtime",
+                if (this.LogLevel >= LogLevel.DEBUG)
+                    this.Log(LogLevel.DEBUG, "Runtime",
                         String.Format("Loading XML config file \"{0}\"",
                         fileName));
                 XmlReaderSettings readerSettings = new XmlReaderSettings();
@@ -337,7 +384,7 @@ namespace OpenAX25Core
                 m_configName = ((XmlElement)doc.SelectSingleNode("/cnf:OpenAX25Config", nsm))
                     .GetAttribute("name");
 
-                this.Log(L2LogLevel.INFO, "L2Runtime",
+                this.Log(LogLevel.INFO, "Runtime",
                     String.Format("Using configuration \"{0}\"", m_configName));
                 
                 // Load assemblies:
@@ -345,7 +392,7 @@ namespace OpenAX25Core
                     this.LoadAssembly(e.GetAttribute("file"));
 
                 // Create channels:
-                IList<IL2Channel> channelsToOpen = new List<IL2Channel>();
+                IList<IChannel> channelsToOpen = new List<IChannel>();
                 foreach (XmlElement e in doc.SelectNodes("//cnf:Channel", nsm))
                 {
                     Dictionary<string, string> properties = new Dictionary<string, string>();
@@ -357,7 +404,7 @@ namespace OpenAX25Core
                         properties.Add(p.GetAttribute("name"), p.InnerText);
 
                     // Create the channel:
-                    IL2Channel channel = this.CreateChannel(e.GetAttribute("class"), properties);
+                    IChannel channel = this.CreateChannel(e.GetAttribute("class"), properties);
                     if (channel == null)
                         throw new Exception(String.Format(
                             "Factory for class {0} returned NULL object",
@@ -369,7 +416,7 @@ namespace OpenAX25Core
                 } // end foreach //
 
                 // Open channels:
-                foreach (IL2Channel channel in channelsToOpen)
+                foreach (IChannel channel in channelsToOpen)
                     channel.Open();
             } // end lock //
         }
@@ -393,10 +440,10 @@ namespace OpenAX25Core
             switch (e.Severity)
             {
                 case XmlSeverityType.Warning:
-                    this.Log(L2LogLevel.WARNING, "L2Runtime", msg);
+                    this.Log(LogLevel.WARNING, "Runtime", msg);
                     break;
                 case XmlSeverityType.Error:
-                    this.Log(L2LogLevel.ERROR, "L2Runtime", msg);
+                    this.Log(LogLevel.ERROR, "Runtime", msg);
                     throw e.Exception;
             } // end switch //
         }
@@ -407,10 +454,10 @@ namespace OpenAX25Core
             switch (e.Severity)
             {
                 case XmlSeverityType.Warning:
-                    this.Log(L2LogLevel.WARNING, "L2Runtime", msg);
+                    this.Log(LogLevel.WARNING, "Runtime", msg);
                     break;
                 case XmlSeverityType.Error:
-                    this.Log(L2LogLevel.ERROR, "L2Runtime", msg);
+                    this.Log(LogLevel.ERROR, "Runtime", msg);
                     throw e.Exception;
             } // end switch //
         }

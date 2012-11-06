@@ -9,8 +9,8 @@ namespace OpenAX25_Protocol
     public class AX25_UI : AX25UFrame
     {
 
-        public AX25_UI(byte[] i, bool pf)
-            : base(new byte[1 + i.Length])
+        public AX25_UI(byte[] i, bool pf, bool cmd = true, bool rsp = false)
+            : base(new byte[1 + i.Length], cmd, rsp)
         {
             m_octets[0] = 0x03;
             I   = i;
@@ -25,8 +25,8 @@ namespace OpenAX25_Protocol
             }
         }
 
-        internal AX25_UI(byte[] octets)
-            : base(octets)
+        internal AX25_UI(byte[] octets, bool cmd, bool rsp)
+            : base(octets, cmd, rsp)
         {
         }
 
@@ -36,7 +36,7 @@ namespace OpenAX25_Protocol
             if (PF)
                 sb.Append("(P/F)");
             sb.Append(' ');
-            sb.Append(L2HexConverter.ToHexString(I, true));
+            sb.Append(HexConverter.ToHexString(I, true));
         }
     }
 }

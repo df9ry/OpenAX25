@@ -1,26 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
     public abstract class AX25SFrame : AX25Frame
     {
-        protected AX25SFrame(byte[] octets, AX25Modulo modulo)
-            : base(octets, modulo)
+        protected AX25SFrame(byte[] octets, AX25Modulo modulo, bool cmd, bool rsp)
+            : base(octets, modulo, cmd, rsp)
         {
         }
 
-        internal static new AX25Frame Create(byte[] octets, AX25Modulo modulo)
+        internal static AX25Frame Create(byte[] octets, AX25Modulo modulo, bool cmd, bool rsp)
         {
             switch (((modulo != AX25Modulo.MOD128)?(octets[0] & 0x0C):octets[0]))
             {
-                case 0x00: return new AX25_RR(octets, modulo);
-                case 0x04: return new AX25_RNR(octets, modulo);
-                case 0x08: return new AX25_REJ(octets, modulo);
-                case 0x0C: return new AX25_SREJ(octets, modulo);
-                default: return new AX25InvalidFrame(octets);
+                case 0x00: return new AX25_RR(octets, modulo, cmd, rsp);
+                case 0x04: return new AX25_RNR(octets, modulo, cmd, rsp);
+                case 0x08: return new AX25_REJ(octets, modulo, cmd, rsp);
+                case 0x0C: return new AX25_SREJ(octets, modulo, cmd, rsp);
+                default: return new AX25InvalidFrame(octets, cmd, rsp);
             } // end switch //
         }
 
@@ -83,22 +80,6 @@ namespace OpenAX25_Protocol
                     default:
                         break;
                 } // end switch //
-            }
-        }
-
-        public override bool Poll
-        {
-            get
-            {
-                return PF;
-            }
-        }
-
-        public override bool Final
-        {
-            get
-            {
-                return PF;
             }
         }
 

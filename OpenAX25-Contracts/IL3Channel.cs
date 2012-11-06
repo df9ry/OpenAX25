@@ -1,5 +1,5 @@
 ﻿//
-// L2NoSpaceException.cs
+// IL3Channel.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -20,30 +20,25 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>
 //
 
-using System;
-
 namespace OpenAX25Contracts
 {
-	/// <summary>
-	/// This exception is thrown when there is no more room in a transmit
-	/// or receive queue.
+    /// <summary>
+	/// IL2 channel.
+	/// Data channel to transmit and receive transparent frames of octets. The data
+	/// in the frames is checked against corruptions on the link layer only. No
+	/// interpretion of the channel content is performed.
 	/// </summary>
-	public class L2NoSpaceException : Exception
+	public interface IL3Channel : IChannel
 	{
-		/// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2NoSpaceException(string message) : base("No space: " + message) {}
-		
-		/// <summary>
-		/// Cionstructor.
-		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2NoSpaceException(string message, Exception innerException)
-            : base("No space: " + message, innerException) { }
-	}
-}
+        /// <summary>
+        /// Get or set the target channel for received data.
+        /// </summary>
+        IL3Channel L3Target { get; set; }
 
+        /// <summary>
+        /// Send a primitive over the channel.
+        /// </summary>
+        /// <param name="message">The primitive to send.</param>
+        void Send(DataLinkPrimitive message);
+    }
+}

@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using OpenAX25Contracts;
 using OpenAX25Core;
 
 namespace OpenAX25_Protocol
@@ -9,8 +8,8 @@ namespace OpenAX25_Protocol
     public sealed class AX25_I : AX25Frame
     {
 
-        public AX25_I(byte[] i, AX25Modulo modulo, int n_r, int n_s, bool p)
-            : base(new byte[Size(modulo) + i.Length], modulo)
+        public AX25_I(byte[] i, AX25Modulo modulo, int n_r, int n_s, bool p, bool cmd = true, bool rsp = false)
+            : base(new byte[Size(modulo) + i.Length], modulo, cmd, rsp)
         {
             m_octets[0] = 0x00;
             I = i;
@@ -27,8 +26,8 @@ namespace OpenAX25_Protocol
             }
         }
 
-        internal AX25_I(byte[] octets, AX25Modulo modulo)
-            : base(octets, modulo)
+        internal AX25_I(byte[] octets, AX25Modulo modulo, bool cmd, bool rsp)
+            : base(octets, modulo, cmd, rsp)
         {
         }
 
@@ -168,14 +167,6 @@ namespace OpenAX25_Protocol
             }
         }
 
-        public override bool Poll
-        {
-            get
-            {
-                return P;
-            }
-        }
-
         protected override void ToString(StringBuilder sb)
         {
             sb.Append("I(R=");
@@ -185,7 +176,7 @@ namespace OpenAX25_Protocol
             if (P)
                 sb.Append(",P");
             sb.Append(") ");
-            sb.Append(L2HexConverter.ToHexString(I, true));
+            sb.Append(HexConverter.ToHexString(I, true));
         }
     }
 }

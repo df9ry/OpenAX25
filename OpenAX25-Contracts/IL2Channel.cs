@@ -26,47 +26,19 @@ using System.Collections.Generic;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// I l2 channel.
+	/// IL2Channel.
 	/// Data channel to transmit and receive transparent frames of octets. The data
 	/// in the frames is checked against corruptions on the link layer only. No
 	/// interpretion of the channel content is performed.
 	/// </summary>
-	public interface IL2Channel
+	public interface IL2Channel : IChannel
 	{
-		/// <summary>
-		/// Gets the name of the channel. This name have to be unique accross the
-		/// application and can never change. There is no interpretion or syntax check
-		/// performed.
-		/// </summary>
-		/// <value>
-		/// The unique name of this channel.
-		/// </value>
-		string Name { get; }
-
-		/// <summary>
-		/// Gets the properties of this channel.
-		/// </summary>
-		/// <value>
-		/// The properties.
-		/// </value>
-		IDictionary<string,string> Properties { get; }
-
         /// <summary>
         /// Get or set the target channel for received data.
         /// </summary>
-        IL2Channel Target { get; set; }
-		
-		/// <summary>
-		/// Open the interface.
-		/// </summary>
-		void Open();
-		
-		/// <summary>
-		/// Close the interface.
-		/// </summary>
-		void Close();
+        IL2Channel L2Target { get; set; }
 
-		/// <summary>
+        /// <summary>
 		/// Gets the number of frames available in the rx queue.
 		/// </summary>
 		/// <value>
@@ -155,12 +127,6 @@ namespace OpenAX25Contracts
 		/// The number of the frame that shall be cancelled.
 		/// </param>
 		bool CancelFrame(UInt64 frameNo);
-
-		/// <summary>
-		/// Resets the channel. The data link is closed and reopened. All pending
-		/// data is withdrawn.
-		/// </summary>
-		void Reset();
 
 	}
 }

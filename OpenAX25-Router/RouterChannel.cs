@@ -71,16 +71,16 @@ namespace OpenAX25Router
                     Path.Combine(Path.GetDirectoryName(m_runtime.ConfigFileName), _routes);
                 string schemaFile = Path.Combine(Path.GetDirectoryName(
                     Assembly.GetExecutingAssembly().Location), "OpenAX25Routes.xsd");
-                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
-                    m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format(
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, String.Format(
                         "Loading config schema file \"{0}\"", schemaFile));
                 StreamReader xsdReader = new StreamReader(schemaFile);
                 XmlSchema schema = XmlSchema.Read(xsdReader,
                     new ValidationEventHandler(XSDValidationEventHandler));
 
                 // Config the XML reader settings:
-                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
-                    m_runtime.Log(L2LogLevel.DEBUG, m_name, String.Format(
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, String.Format(
                         "Loading XML route file \"{0}\"", fileName));
                 XmlReaderSettings readerSettings = new XmlReaderSettings();
                 readerSettings.ValidationType = ValidationType.Schema;
@@ -100,7 +100,7 @@ namespace OpenAX25Router
                 string name = ((XmlElement)doc.SelectSingleNode("/route:OpenAX25Routes", nsm))
                     .GetAttribute("name");
 
-                m_runtime.Log(L2LogLevel.INFO, m_name,
+                m_runtime.Log(LogLevel.INFO, m_name,
                     String.Format("Using routes \"{0}\"", name));
 
                 // Load routes:
@@ -113,7 +113,7 @@ namespace OpenAX25Router
                     IDictionary<string, string> routeProperties = new Dictionary<string, string>();
                     foreach (XmlElement p in e.SelectNodes("route:Property", nsm))
                         routeProperties.Add(p.GetAttribute("name"), p.InnerText.Trim());
-                    m_runtime.Log(L2LogLevel.INFO, m_name, String.Format(
+                    m_runtime.Log(LogLevel.INFO, m_name, String.Format(
                         "Route \"{0}\" to \"{1}\" and {2} ({3})", pattern, target,
                             (_continue?"continue":"stop"), DumpProperties(routeProperties)));
                     m_routes.Add(new Route(target, pattern, _continue, routeProperties));
@@ -151,10 +151,10 @@ namespace OpenAX25Router
                 string text = String.Format("{0} [{1}-->{2}]: {3}", header.ToString(),
                     header.nextHop.ToString(), targetChannel.Name,
                     //L2HexConverter.ToHexString(data, true)
-                    AX25Frame.Create(data, AX25Modulo.MOD8).ToString()
+                    AX25Frame.Create(data, header.isCommand, header.isResponse).ToString()
                 );
-                if (m_runtime.LogLevel >= L2LogLevel.DEBUG)
-                    m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, text);
                 m_runtime.Monitor(text);
                 L2Frame new_frame = new L2Frame(m_runtime.NewFrameNo(), frame.isPriorityFrame,
                                 frame.data, targetProperties);
@@ -163,8 +163,8 @@ namespace OpenAX25Router
             else
             {
                 string text = String.Format("{0} [{1}--><NoRoute>]: {2}", header.ToString(),
-                    header.nextHop.ToString(), L2HexConverter.ToHexString(data, true));
-                m_runtime.Log(L2LogLevel.INFO, m_name, text);
+                    header.nextHop.ToString(), HexConverter.ToHexString(data, true));
+                m_runtime.Log(LogLevel.INFO, m_name, text);
                 m_runtime.Monitor(text);
             }
     	}
@@ -175,10 +175,10 @@ namespace OpenAX25Router
             switch (e.Severity)
             {
                 case XmlSeverityType.Warning:
-                    m_runtime.Log(L2LogLevel.WARNING, m_name, msg);
+                    m_runtime.Log(LogLevel.WARNING, m_name, msg);
                     break;
                 case XmlSeverityType.Error:
-                    m_runtime.Log(L2LogLevel.ERROR, m_name, msg);
+                    m_runtime.Log(LogLevel.ERROR, m_name, msg);
                     throw e.Exception;
             } // end switch //
         }
@@ -189,10 +189,10 @@ namespace OpenAX25Router
             switch (e.Severity)
             {
                 case XmlSeverityType.Warning:
-                    m_runtime.Log(L2LogLevel.WARNING, m_name, msg);
+                    m_runtime.Log(LogLevel.WARNING, m_name, msg);
                     break;
                 case XmlSeverityType.Error:
-                    m_runtime.Log(L2LogLevel.ERROR, m_name, msg);
+                    m_runtime.Log(LogLevel.ERROR, m_name, msg);
                     throw e.Exception;
             } // end switch //
         }
@@ -202,7 +202,7 @@ namespace OpenAX25Router
             // Set default target to the null channel:
     		if (properties.ContainsKey("Target"))
     			properties.Remove("Target");
-    		properties.Add("Target", "NULL");
+    		properties.Add("Target", "L2NULL");
     		return properties;
     	}
 

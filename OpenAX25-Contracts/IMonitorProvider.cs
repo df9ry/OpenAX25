@@ -1,5 +1,5 @@
 ﻿//
-// L2FactoryNotFoundException.cs
+// IL2MonitorProvider
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,23 +25,14 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// A Factory with the given name is not found.
+	/// Description of IL2MonitorProvider.
 	/// </summary>
-	public class L2FactoryNotFoundException : Exception
+	public interface IMonitorProvider
 	{
 		/// <summary>
-		/// Constructor.
+		/// Called when a monitor message should be written.
 		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		public L2FactoryNotFoundException(string message) : base("Factory not found: " + message) {}
-		
-		/// <summary>
-		/// Cionstructor.
-		/// </summary>
-		/// <param name="message">The message attached to this exception.</param>
-		/// <param name="innerException">Inner exception attached to this
-		/// exception</param>
-		public L2FactoryNotFoundException(string message, Exception innerException)
-            : base("Factory not found: " + message, innerException) { }
+		/// <param name="text">Monitor text.</param>
+		void OnMonitor(string text);
 	}
 }

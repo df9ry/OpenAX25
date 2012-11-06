@@ -1,5 +1,5 @@
 ﻿//
-// L2InvalidAX25FrameException.cs
+// L2NoSpaceException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,15 +25,16 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Description of L2InvalidAX25FrameException.
+	/// This exception is thrown when there is no more room in a transmit
+	/// or receive queue.
 	/// </summary>
-	public class L2InvalidAX25FrameException : Exception
+	public class NoSpaceException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2InvalidAX25FrameException(string message) : base("Invalid XX.25 frame: " + message) {}
+		public NoSpaceException(string message) : base("No space: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -41,7 +42,8 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2InvalidAX25FrameException(string message, Exception innerException)
-            : base("Invalid XX.25 frame: " + message, innerException) { }
+		public NoSpaceException(string message, Exception innerException)
+            : base("No space: " + message, innerException) { }
 	}
 }
+

@@ -72,7 +72,7 @@ namespace OpenAX25Kiss
 			if (!properties.TryGetValue("ComPort", out this.comPort))
 				this.comPort = "COM1";
 			if (String.IsNullOrEmpty(this.comPort))
-				throw new L2InvalidPropertyException("ComPort");
+				throw new InvalidPropertyException("ComPort");
 			string _baudrate;
 			if (!properties.TryGetValue("Baudrate", out _baudrate))
 				_baudrate = "9600";
@@ -81,7 +81,7 @@ namespace OpenAX25Kiss
 				if (this.baudrate <= 0)
 					throw new ArgumentOutOfRangeException("BaudRate");
 			} catch (Exception ex) {
-				throw new L2InvalidPropertyException("Baudrate", ex);
+				throw new InvalidPropertyException("Baudrate", ex);
 			}
 			string _port;
 			if (!properties.TryGetValue("Port", out _port))
@@ -91,7 +91,7 @@ namespace OpenAX25Kiss
 				if ((this.kissPort < -1) && (this.kissPort > 15))
 					throw new ArgumentOutOfRangeException("Port");
 			} catch (Exception ex) {
-				throw new L2InvalidPropertyException("Port", ex);
+				throw new InvalidPropertyException("Port", ex);
 			}
 		}
 
@@ -125,7 +125,7 @@ namespace OpenAX25Kiss
 				} else {
 					string _port;
 					if (!frame.addr.TryGetValue("Port", out _port))
-						throw new L2MissingPropertyException("Port");
+						throw new MissingPropertyException("Port");
 					if ("Raw".Equals(_port)) { // This is a raw packet:
 						this.port.Write(frame.data, 0, frame.data.Length);
 						return;
@@ -220,12 +220,12 @@ namespace OpenAX25Kiss
 						if (this.iFrameBuffer > 0) {
 							byte c = rxFrameBuffer[0];
 							if ((c & 0x0f) != 0x00) { // Not data frame.
-								if (m_runtime.LogLevel >= L2LogLevel.INFO) {
+								if (m_runtime.LogLevel >= LogLevel.INFO) {
 									byte[] octets = new byte[iFrameBuffer];
 									Array.Copy(rxFrameBuffer, 0, octets, 0, iFrameBuffer);
-									m_runtime.Log(L2LogLevel.INFO, m_name,
+									m_runtime.Log(LogLevel.INFO, m_name,
 									              "Ignored incoming TNC control sequence " +
-									              L2HexConverter.ToHexString(octets));
+									              HexConverter.ToHexString(octets));
 								}
 							} else { // Normal data frame:
 								int port = c;

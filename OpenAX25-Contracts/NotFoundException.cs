@@ -1,5 +1,5 @@
 ﻿//
-// IL2LogProvider.cs
+// L2NotFoundException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,15 +25,24 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Entity that can output log messages.
+	/// This exception is thrown when some name couldn't be found.
 	/// </summary>
-	public interface IL2LogProvider
+	public class NotFoundException : Exception
 	{
 		/// <summary>
-		/// Called when a log message should be written.
+		/// Constructor.
 		/// </summary>
-		/// <param name="component">Name of the originator component</param>
-		/// <param name="message">Log message</param>
-		void OnLog(string component, string message);
+		/// <param name="message">The message attached to this exception.</param>
+		public NotFoundException(string message) : base("Not found: " + message) {}
+		
+		/// <summary>
+		/// Cionstructor.
+		/// </summary>
+		/// <param name="message">The message attached to this exception.</param>
+		/// <param name="innerException">Inner exception attached to this
+		/// exception</param>
+        public NotFoundException(string message, Exception innerException)
+            : base("Not found: " + message, innerException) { }
 	}
 }
+

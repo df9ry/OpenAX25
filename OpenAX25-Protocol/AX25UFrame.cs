@@ -8,38 +8,38 @@ namespace OpenAX25_Protocol
     public abstract class AX25UFrame : AX25Frame
     {
 
-        protected AX25UFrame(byte[] i, bool pf)
-            : base(new byte[i.Length + 1], 0)
+        protected AX25UFrame(byte[] i, bool pf, bool cmd, bool rsp)
+            : base(new byte[i.Length + 1], 0, cmd, rsp)
         {
             I = i;
             PF = pf;
         }
 
-        protected AX25UFrame(bool pf)
-            : base(new byte[0], 0)
+        protected AX25UFrame(bool pf, bool cmd, bool rsp)
+            : base(new byte[0], 0, cmd, rsp)
         {
             PF = pf;
         }
 
-        protected AX25UFrame(byte[] octets)
-            : base(octets, 0)
+        protected AX25UFrame(byte[] octets, bool cmd, bool rsp)
+            : base(octets, 0, cmd, rsp)
         {
         }
 
-        internal static AX25Frame Create(byte[] octets)
+        internal static AX25Frame Create(byte[] octets, bool cmd, bool rsp)
         {
             switch (octets[0] & 0xEC)
             {
-                case 0x6C: return new AX25_SABME(octets);
-                case 0x2C: return new AX25_SABM(octets);
-                case 0x40: return new AX25_DISC(octets);
-                case 0x0C: return new AX25_DM(octets);
-                case 0x60: return new AX25_UA(octets);
-                case 0x81: return new AX25_FRMR(octets);
-                case 0x00: return new AX25_UI(octets);
-                case 0x9C: return new AX25_XID(octets);
-                case 0xE0: return new AX25_TEST(octets);
-                default: return new AX25InvalidFrame(octets);
+                case 0x6C: return new AX25_SABME(octets, cmd, rsp);
+                case 0x2C: return new AX25_SABM(octets, cmd, rsp);
+                case 0x40: return new AX25_DISC(octets, cmd, rsp);
+                case 0x0C: return new AX25_DM(octets, cmd, rsp);
+                case 0x60: return new AX25_UA(octets, cmd, rsp);
+                case 0x81: return new AX25_FRMR(octets, cmd, rsp);
+                case 0x00: return new AX25_UI(octets, cmd, rsp);
+                case 0x9C: return new AX25_XID(octets, cmd, rsp);
+                case 0xE0: return new AX25_TEST(octets, cmd, rsp);
+                default: return new AX25InvalidFrame(octets, cmd, rsp);
             } // end switch //
         }
 
@@ -85,22 +85,6 @@ namespace OpenAX25_Protocol
             get
             {
                 return m_octets.Length - 1;
-            }
-        }
-
-        public override bool Poll
-        {
-            get
-            {
-                return PF;
-            }
-        }
-
-        public override bool Final
-        {
-            get
-            {
-                return PF;
             }
         }
 

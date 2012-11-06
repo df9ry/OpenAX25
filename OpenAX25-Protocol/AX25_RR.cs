@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Text;
+using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
     public class AX25_RR : AX25SFrame
     {
 
-        public AX25_RR(AX25Modulo modulo, int n_r, bool pf)
-            : base(new byte[Size(modulo)], modulo)
+        public AX25_RR(AX25Modulo modulo, int n_r, bool pf, bool cmd = true, bool rsp = false)
+            : base(new byte[Size(modulo)], modulo, cmd, rsp)
         {
             m_octets[0] = 0x01;
             N_R = n_r;
@@ -24,8 +22,8 @@ namespace OpenAX25_Protocol
             }
         }
 
-        internal AX25_RR(byte[] octets, AX25Modulo modulo)
-            : base(octets, modulo)
+        internal AX25_RR(byte[] octets, AX25Modulo modulo, bool cmd, bool rsp)
+            : base(octets, modulo, cmd, rsp)
         {
         }
 

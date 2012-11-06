@@ -28,7 +28,7 @@ namespace OpenAX25Core
 	/// <summary>
 	/// Utility class for hexadecimal number handling.
 	/// </summary>
-	public class L2HexConverter
+	public class HexConverter
 	{	
 		
 		/// <summary>
@@ -69,7 +69,7 @@ namespace OpenAX25Core
 			return sb.ToString();
 		}
 		
-		private L2HexConverter() // No instances allowed.
+		private HexConverter() // No instances allowed.
 		{
 		}
 		

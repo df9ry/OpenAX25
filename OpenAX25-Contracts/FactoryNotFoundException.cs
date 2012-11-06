@@ -1,5 +1,5 @@
 ﻿//
-// L2LogLevel.cs
+// L2FactoryNotFoundException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,35 +25,23 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Description of LogLevel.
+	/// A Factory with the given name is not found.
 	/// </summary>
-	public enum L2LogLevel
+	public class FactoryNotFoundException : Exception
 	{
 		/// <summary>
-		/// No messages are logged at all.
+		/// Constructor.
 		/// </summary>
-		NONE,
+		/// <param name="message">The message attached to this exception.</param>
+		public FactoryNotFoundException(string message) : base("Factory not found: " + message) {}
 		
 		/// <summary>
-		/// Errors are logged.
+		/// Cionstructor.
 		/// </summary>
-		ERROR,
-		
-		/// <summary>
-		/// Only warnings and errors will be logged.
-		/// </summary>
-		WARNING,
-		
-		/// <summary>
-		/// Errors and informational messages are logged
-		/// (Default).
-		/// </summary>
-		INFO,
-		
-		/// <summary>
-		/// All messages are logged, including full hex dumps
-		/// of data frames.
-		/// </summary>
-		DEBUG
+		/// <param name="message">The message attached to this exception.</param>
+		/// <param name="innerException">Inner exception attached to this
+		/// exception</param>
+		public FactoryNotFoundException(string message, Exception innerException)
+            : base("Factory not found: " + message, innerException) { }
 	}
 }

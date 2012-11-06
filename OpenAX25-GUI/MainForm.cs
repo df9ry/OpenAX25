@@ -33,7 +33,7 @@ namespace OpenAX25GUI
 	/// <summary>
 	/// Description of MainForm.
 	/// </summary>
-	public partial class MainForm : Form, IL2LogProvider, IL2MonitorProvider
+	public partial class MainForm : Form, ILogProvider, IMonitorProvider
 	{
 		
 		private const int MAX_LOG_LINES = 1000;
@@ -41,7 +41,7 @@ namespace OpenAX25GUI
 
 		private ArrayList m_logLines = new ArrayList(MAX_LOG_LINES);
 		private ArrayList m_monitorLines = new ArrayList(MAX_MONITOR_LINES);
-		private L2Runtime m_runtime = L2Runtime.Instance;
+		private Runtime m_runtime = Runtime.Instance;
 		private OpenAX25Settings m_settings = new OpenAX25Settings();
 		private Control[] m_controlsSave = null;
 		
@@ -75,12 +75,12 @@ namespace OpenAX25GUI
 			//
 			// Start program:
 			//
-			L2Runtime.Instance.Log(L2LogLevel.INFO, "MainForm", "Program started");
+			Runtime.Instance.Log(LogLevel.INFO, "MainForm", "Program started");
 			
 			// Load Config file:
             try
             {
-                L2Runtime.Instance.LoadConfig(m_settings.ConfigFile);
+                Runtime.Instance.LoadConfig(m_settings.ConfigFile);
             }
             catch (Exception e)
             {
@@ -88,11 +88,11 @@ namespace OpenAX25GUI
                     "Config file \"{0}\" konnte nicht geladen werden ({1})!", m_settings.ConfigFile, e.Message));
             }
 			
-			logLevelNoneButton.Checked    = (m_runtime.LogLevel == L2LogLevel.NONE   );
-			logLevelErrorButton.Checked   = (m_runtime.LogLevel == L2LogLevel.ERROR  );
-			logLevelWarningButton.Checked = (m_runtime.LogLevel == L2LogLevel.WARNING);
-			logLevelInfoButton.Checked    = (m_runtime.LogLevel == L2LogLevel.INFO   );
-			logLevelDebugButton.Checked   = (m_runtime.LogLevel == L2LogLevel.DEBUG  );
+			logLevelNoneButton.Checked    = (m_runtime.LogLevel == LogLevel.NONE   );
+			logLevelErrorButton.Checked   = (m_runtime.LogLevel == LogLevel.ERROR  );
+			logLevelWarningButton.Checked = (m_runtime.LogLevel == LogLevel.WARNING);
+			logLevelInfoButton.Checked    = (m_runtime.LogLevel == LogLevel.INFO   );
+			logLevelDebugButton.Checked   = (m_runtime.LogLevel == LogLevel.DEBUG  );
 			monitorCheckBox.Checked       = (m_runtime.MonitorProvider != null);
 		}
 		
@@ -191,40 +191,40 @@ namespace OpenAX25GUI
 		void LogLevelNoneButtonCheckedChanged(object sender, EventArgs e)
 		{
 			if (logLevelNoneButton.Checked) {
-				m_runtime.LogLevel = L2LogLevel.NONE;
-				m_settings.LogLevel = L2LogLevel.NONE;
+				m_runtime.LogLevel = LogLevel.NONE;
+				m_settings.LogLevel = LogLevel.NONE;
 			}
 		}
 		
 		void LogLevelErrorButtonCheckedChanged(object sender, EventArgs e)
 		{
 			if (logLevelErrorButton.Checked) {
-				m_runtime.LogLevel = L2LogLevel.ERROR;
-				m_settings.LogLevel = L2LogLevel.ERROR;
+				m_runtime.LogLevel = LogLevel.ERROR;
+				m_settings.LogLevel = LogLevel.ERROR;
 			}
 		}
 		
 		void LogLevelWarningButtonCheckedChanged(object sender, EventArgs e)
 		{
 			if (logLevelWarningButton.Checked) {
-				m_runtime.LogLevel = L2LogLevel.WARNING;
-				m_settings.LogLevel = L2LogLevel.WARNING;
+				m_runtime.LogLevel = LogLevel.WARNING;
+				m_settings.LogLevel = LogLevel.WARNING;
 			}
 		}
 		
 		void LogLevelInfoButtonCheckedChanged(object sender, EventArgs e)
 		{
 			if (logLevelInfoButton.Checked) {
-				m_runtime.LogLevel = L2LogLevel.INFO;
-				m_settings.LogLevel = L2LogLevel.INFO;
+				m_runtime.LogLevel = LogLevel.INFO;
+				m_settings.LogLevel = LogLevel.INFO;
 			}
 		}
 		
 		void LogLevelDebugButtonCheckedChanged(object sender, EventArgs e)
 		{
 			if (logLevelDebugButton.Checked) {
-				m_runtime.LogLevel = L2LogLevel.DEBUG;
-				m_settings.LogLevel = L2LogLevel.DEBUG;
+				m_runtime.LogLevel = LogLevel.DEBUG;
+				m_settings.LogLevel = LogLevel.DEBUG;
 			}
 		}
 		

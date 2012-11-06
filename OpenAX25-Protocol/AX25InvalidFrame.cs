@@ -9,8 +9,8 @@ namespace OpenAX25_Protocol
     public sealed class AX25InvalidFrame : AX25Frame
     {
 
-        internal AX25InvalidFrame(byte[] octets)
-            : base(octets, 0)
+        internal AX25InvalidFrame(byte[] octets, bool cmd, bool rsp)
+            : base(octets, 0, cmd, rsp)
         {
         }
 
@@ -25,7 +25,7 @@ namespace OpenAX25_Protocol
         protected override void ToString(StringBuilder sb)
         {
             sb.Append("IFRM ");
-            sb.Append(L2HexConverter.ToHexString(m_octets, true));
+            sb.Append(HexConverter.ToHexString(m_octets, true));
         }
     }
 }

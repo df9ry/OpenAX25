@@ -48,7 +48,7 @@ namespace OpenAX25Contracts
 			for (int i = 0; i < 6; ++i) {
 				byte b = octets[iStart + i];
 				if ((b & 0x01) != 0x00)
-					throw new L2InvalidAX25FrameException("EOA bit inside of callsign field");
+					throw new InvalidAX25FrameException("EOA bit inside of callsign field");
 				int _ch = ((int)b) >> 1;
 				if (_ch == (int)' ')
 					break;
@@ -60,6 +60,80 @@ namespace OpenAX25Contracts
 			this.chBit = ((c & 0x80) != 0x00);
 			this.ssid = (int)((c & 0x1e) >> 1);
 		}
+
+        /// <summary>
+        /// Construct a new callsign.
+        /// </summary>
+        /// <param name="callsign">The callsign without SSID.</param>
+        /// <param name="ssid">The SSID.</param>
+        /// <param name="chBit">The CH bit (Default: false).</param>
+        public L2Callsign(string callsign, int ssid, bool chBit)
+        {
+            if (String.IsNullOrEmpty(callsign))
+                throw new InvalidPropertyException("Empty callsign");
+            if (callsign.Length > 6)
+                throw new InvalidPropertyException("Callsign too long: \"" + callsign + "\"");
+            this.callsign = callsign.ToUpperInvariant();
+            if ((ssid < 0) || (ssid > 15))
+                throw new InvalidPropertyException("SSID range error [0..15]: " + ssid);
+            this.ssid = ssid;
+            this.chBit = chBit;
+        }
+
+        /// <summary>
+        /// Copy constructor with CH bit override.
+        /// </summary>
+        /// <param name="callsign">Source callsign.</param>
+        /// <param name="chBit">The CH bit.</param>
+        public L2Callsign(string callsign, bool chBit = false)
+        {
+            string _callsign;
+            int _ssid;
+
+            if (String.IsNullOrEmpty(callsign))
+                throw new InvalidPropertyException("Empty callsign");
+            int p = callsign.IndexOf('-');
+            if (p >= 0)
+            {
+                _callsign = callsign.Substring(0, p);
+                _ssid = (p + 1 < callsign.Length) ? (int)(callsign.ToCharArray()[p+1]-'0') : 0;
+            }
+            else
+            {
+                _callsign = callsign;
+                _ssid = 0;
+            }
+            if (_callsign.Length > 6)
+                throw new InvalidPropertyException("Callsign too long: \"" + _callsign + "\"");
+            this.callsign = _callsign.ToUpperInvariant();
+            if ((_ssid < 0) || (_ssid > 15))
+                throw new InvalidPropertyException("SSID range error [0..15]: " + _ssid);
+            this.ssid = _ssid;
+            this.chBit = chBit;
+        }
+
+        /// <summary>
+        /// Copy Constructor.
+        /// </summary>
+        /// <param name="callsign">Source callsign.</param>
+        public L2Callsign(L2Callsign callsign)
+        {
+            this.callsign = callsign.callsign;
+            this.ssid = callsign.ssid;
+            this.chBit = callsign.chBit;
+        }
+
+        /// <summary>
+        /// Copy  Constructor with CH bit override.
+        /// </summary>
+        /// <param name="callsign">Source callsign.</param>
+        /// <param name="chBit">The CH bit.</param>
+        public L2Callsign(L2Callsign callsign, bool chBit)
+        {
+            this.callsign = callsign.callsign;
+            this.ssid = callsign.ssid;
+            this.chBit = chBit;
+        }
 		
 		/// <summary>
 		/// The callsign without(!) ssid.

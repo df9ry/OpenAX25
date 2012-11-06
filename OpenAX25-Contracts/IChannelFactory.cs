@@ -28,7 +28,7 @@ namespace OpenAX25Contracts
 	/// <summary>
 	/// Factory to create channel instances.
 	/// </summary>
-	public interface IL2ChannelFactory
+	public interface IChannelFactory
 	{
 		
 		/// <summary>
@@ -41,6 +41,6 @@ namespace OpenAX25Contracts
 		/// </summary>
 		/// <param name="properties">Properties for the new channel instance.</param>
 		/// <returns>New channel instance.</returns>
-		IL2Channel CreateChannel(IDictionary<string,string> properties);
+		IChannel CreateChannel(IDictionary<string,string> properties);
 	}
 }

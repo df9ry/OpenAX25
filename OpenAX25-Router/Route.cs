@@ -72,9 +72,9 @@ namespace OpenAX25Router
             get
             {
                 if (m_channel == null) // Resolve lazy:
-                    m_channel = L2Runtime.Instance.LookupChannel(m_channelName);
+                    m_channel = Runtime.Instance.LookupL2Channel(m_channelName);
                 if (m_channel == null)
-                    throw new L2NotFoundException(m_channelName);
+                    throw new NotFoundException(m_channelName);
                 return m_channel;
             }
         }

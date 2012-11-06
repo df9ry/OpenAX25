@@ -1,5 +1,5 @@
 ﻿//
-// ChannelFactory.cs
+// L2MissingPropertyException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -21,43 +21,27 @@
 //
 
 using System;
-using System.Collections.Generic;
 
-using OpenAX25Contracts;
-
-namespace OpenAX25Kiss
+namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// ChannelFactory for KISS.
+	/// Raised when a mandatory property is not specified.
 	/// </summary>
-	public class ChannelFactory : IChannelFactory
+	public class MissingPropertyException : Exception
 	{
-
 		/// <summary>
-		/// ChannelFactory constructor.
+		/// Constructor.
 		/// </summary>
-		public ChannelFactory()	{}
+		/// <param name="message">The message attached to this exception.</param>
+		public MissingPropertyException(string message) : base("Missing property: " + message) {}
 		
 		/// <summary>
-		/// The channel class name of this KISS implementation.
-		/// <c>KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95</c>
+		/// Cionstructor.
 		/// </summary>
-		public string ChannelClass
-		{
-			get {
-				return "KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95";
-			}
-		}
-		
-		/// <summary>
-		/// Create a new KISS channel.
-		/// </summary>
-		/// <param name="properties">Proeprties for this KISS channel.</param>
-		/// <returns>New KISS channel.</returns>
-		public IChannel CreateChannel(IDictionary<string,string> properties)
-		{
-			return new KissChannel(properties);
-		}
-		
+		/// <param name="message">The message attached to this exception.</param>
+		/// <param name="innerException">Inner exception attached to this
+		/// exception</param>
+		public MissingPropertyException(string message, Exception innerException)
+            : base("Missing property: " + message, innerException) { }
 	}
 }

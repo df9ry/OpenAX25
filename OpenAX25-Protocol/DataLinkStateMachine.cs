@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
+using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
@@ -130,31 +129,6 @@ namespace OpenAX25_Protocol
             return ErrorCode_N[errorCode];
         }
 
-        public enum Version_T {
-            V2_0, V2_2
-        }
-
-        private Version_T m_version = Version_T.V2_0;
-
-        public Version_T Version
-        {
-            get
-            {
-                return m_version;
-            }
-        }
-
-        private readonly static IDictionary<Version_T, string> Version_N = new Dictionary<Version_T, string>
-        {
-            { Version_T.V2_0, "V2.0" },
-            { Version_T.V2_2, "V2.2" }
-        };
-
-        public static string VersionName(Version_T version)
-        {
-            return Version_N[version];
-        }
-
         private AX25Modulo m_modulo = AX25Modulo.UNSPECIFIED;
 
         private bool Layer3Initiated = false; // SABM was sent by request of Layer 3; i.e., DL-CONNECT primitive.
@@ -193,6 +167,7 @@ namespace OpenAX25_Protocol
         }
 
         private AX25_Configuration m_config;
+        private AX25Version m_version;
 
         internal DataLinkStateMachine(AX25_Configuration config)
         {
@@ -258,7 +233,7 @@ namespace OpenAX25_Protocol
             switch (p.DataLinkPrimitiveType)
             {
                 case DataLinkPrimitive_T.DL_DISCONNECT_Request_T :
-                    Output(new DL_DISCONNECT_Confirm(this));
+                    Output(new DL_DISCONNECT_Confirm());
                     break;
                 case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T :
                     UI_Command(((DL_UNIT_DATA_Request)p).Data);
@@ -280,7 +255,7 @@ namespace OpenAX25_Protocol
             switch (f.FrameType)
             {
                 case AX25Frame_T.UA:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorC));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorC));
                     break;
                 case AX25Frame_T.DM:
                     break;
@@ -293,7 +268,7 @@ namespace OpenAX25_Protocol
                     F = ((AX25_SABM)f).PF;
                     if (AbleToEstablish())
                     {
-                        SetVersion(Version_T.V2_0);
+                        SetVersion(AX25Version.V2_0);
                         EstablishFromAwait(AX25Modulo.MOD8);
                     }
                     else // Not able to establish:
@@ -305,7 +280,7 @@ namespace OpenAX25_Protocol
                     F = ((AX25_SABME)f).PF;
                     if (AbleToEstablish())
                     {
-                        SetVersion(Version_T.V2_2);
+                        SetVersion(AX25Version.V2_2);
                         EstablishFromAwait(AX25Modulo.MOD128);
                     }
                     else // Not able to establish:
@@ -377,7 +352,7 @@ namespace OpenAX25_Protocol
                     if (((AX25_DM)f).PF)
                     {
                         DiscardIFrameQueue();
-                        Output(new DL_DISCONNECT_Indication(this));
+                        Output(new DL_DISCONNECT_Indication());
                         T1.Stop();
                         m_state = State_T.Disconnected;
                     }
@@ -386,11 +361,11 @@ namespace OpenAX25_Protocol
                     if (((AX25_UA)f).PF)
                     {
                         if (IsLayer3Initiated()) {
-                            Output(new DL_CONNECT_Confirm(this));
+                            Output(new DL_CONNECT_Confirm());
                         } else {
                             if (V_S != V_A) {
                                 DiscardIFrameQueue();
-                                Output(new DL_CONNECT_Indication(this, m_modulo));
+                                Output(new DL_CONNECT_Indication(m_modulo));
                             }
                         }
                         T1.Stop();
@@ -400,7 +375,7 @@ namespace OpenAX25_Protocol
                     }
                     else
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorD));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorD));
                     }
                     break;
                 case AX25Frame_T.SABME:
@@ -458,26 +433,26 @@ namespace OpenAX25_Protocol
                     if (F)
                     {
                         DiscardIFrameQueue();
-                        Output(new DL_DISCONNECT_Indication(this));
+                        Output(new DL_DISCONNECT_Indication());
                         T1.Stop();
                         m_state = State_T.Disconnected;
                     }
                     break;
                 case AX25Frame_T.UA:
                     if (!F) {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorD));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorD));
                         break;
                     }
                     if (Layer3Initiated)
                     {
-                        Output(new DL_CONNECT_Confirm(this));
+                        Output(new DL_CONNECT_Confirm());
                     }
                     else
                     {
                         if (V_S != V_A)
                         {
                             DiscardIFrameQueue();
-                            Output(new DL_CONNECT_Indication(this, m_modulo));
+                            Output(new DL_CONNECT_Indication(m_modulo));
                         }
                     }
                     T1.Stop();
@@ -495,7 +470,7 @@ namespace OpenAX25_Protocol
                 case AX25Frame_T.FRMR:
                     SRT = m_config.SRT;
                     T1V = m_config.SRT * 2;
-                    EstablishDataLink(Version_T.V2_2);
+                    EstablishDataLink(AX25Version.V2_2);
                     SetLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
                     break;
@@ -551,16 +526,16 @@ namespace OpenAX25_Protocol
                     break;
                 case AX25Frame_T.UA:
                     if (((AX25_UA)f).PF) {
-                        Output(new DL_DISCONNECT_Confirm(this));
+                        Output(new DL_DISCONNECT_Confirm());
                         T1.Stop();
                         m_state = State_T.Disconnected;
                     } else {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorD));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorD));
                     }
                     break;
                 case AX25Frame_T.DM:
                     if (((AX25_DM)f).PF) {
-                        Output(new DL_DISCONNECT_Confirm(this));
+                        Output(new DL_DISCONNECT_Confirm());
                         T1.Stop();
                         m_state = State_T.Disconnected;
                     }
@@ -646,10 +621,10 @@ namespace OpenAX25_Protocol
                     F = ((AX25UFrame)f).PF;
                     Output(new AX25_UA(F));
                     ClearExceptionConditions();
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorF));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorF));
                     if (V_S != V_A) {
                         DiscardIFrameQueue();
-                        Output(new DL_CONNECT_Indication(this, m_modulo));
+                        Output(new DL_CONNECT_Indication(m_modulo));
                     }
                     T1.Stop();
                     T3.Start(T3V);
@@ -658,27 +633,27 @@ namespace OpenAX25_Protocol
                     DiscardIFrameQueue();
                     F = ((AX25_DISC)f).PF;
                     Output(new AX25_UA(F));
-                    Output(new DL_DISCONNECT_Indication(this));
+                    Output(new DL_DISCONNECT_Indication());
                     T1.Stop();
                     T3.Stop();
                     m_state = State_T.Disconnected;
                     break;
                 case AX25Frame_T.UA:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorC));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorC));
                     EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
                     break;
                 case AX25Frame_T.DM:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorE));
-                    Output(new DL_DISCONNECT_Indication(this));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorE));
+                    Output(new DL_DISCONNECT_Indication());
                     DiscardIFrameQueue();
                     T1.Stop();
                     T3.Stop();
                     m_state = State_T.Disconnected;
                     break;
                 case AX25Frame_T.FRMR:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorK));
                     EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
@@ -750,12 +725,12 @@ namespace OpenAX25_Protocol
                 case AX25Frame_T.I:
                     if (!((AX25_I)f).P)
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorS));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorS));
                         break;
                     }
                     if (((AX25_I)f).InfoFieldLength > N1)
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorO));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorO));
                         ClearLayer3Initiated();
                         m_state = State_T.AwaitingConnect;
                         break;
@@ -906,11 +881,11 @@ namespace OpenAX25_Protocol
             switch (f.FrameType)
             {
                 case AX25Frame_T.SABM:
-                    SetVersion(Version_T.V2_0);
+                    SetVersion(AX25Version.V2_0);
                     EstablishFromRecover(AX25Modulo.MOD8, ((AX25_SABM)f).PF);
                     break;
                 case AX25Frame_T.SABME:
-                    SetVersion(Version_T.V2_2);
+                    SetVersion(AX25Version.V2_2);
                     EstablishFromRecover(AX25Modulo.MOD128, ((AX25_SABM)f).PF);
                     break;
                 case AX25Frame_T.RR:
@@ -949,13 +924,13 @@ namespace OpenAX25_Protocol
                     DiscardIFrameQueue();
                     F = P;
                     Output(new AX25_UA(F));
-                    Output(new DL_DISCONNECT_Indication(this));
+                    Output(new DL_DISCONNECT_Indication());
                     T1.Stop();
                     T3.Stop();
                     m_state = State_T.Disconnected;
                     break;
                 case AX25Frame_T.UA:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorC));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorC));
                     EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
@@ -992,7 +967,7 @@ namespace OpenAX25_Protocol
                         InvokeRetransmission();
                     break;
                 case AX25Frame_T.DM:
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorK));
                     EstablishDataLink(m_version);
                     ClearLayer3Initiated();
                     m_state = State_T.AwaitingConnect;
@@ -1030,12 +1005,12 @@ namespace OpenAX25_Protocol
                 case AX25Frame_T.I:
                     if (!((AX25_I)f).P)
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorS));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorS));
                         break;
                     }
                     if (((AX25_I)f).InfoFieldLength <= N1)
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorO));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorO));
                         EstablishDataLink(m_version);
                         ClearLayer3Initiated();
                         m_state = State_T.AwaitingConnect;
@@ -1066,9 +1041,9 @@ namespace OpenAX25_Protocol
                         SRejectException = 0;
                         if (SRejectException > 0)
                             SRejectException -= 1;
-                        Output(new DL_DATA_Indication(this, ((AX25_I)f).I));
+                        Output(new DL_DATA_Indication(((AX25_I)f).I));
                         while (IFrameStore[V_R] != null) {
-                            Output(new DL_DATA_Indication(this, IFrameStore[V_R].I));
+                            Output(new DL_DATA_Indication(IFrameStore[V_R].I));
                             V_R += 1;
                         } // end while //
                         if (!P) {
@@ -1139,8 +1114,8 @@ namespace OpenAX25_Protocol
                     if (RC == N2)
                     {
                         DiscardIFrameQueue();
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorG));
-                        Output(new DL_DISCONNECT_Indication(this));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorG));
+                        Output(new DL_DISCONNECT_Indication());
                         m_state = State_T.Disconnected;
                     }
                     else
@@ -1155,8 +1130,8 @@ namespace OpenAX25_Protocol
                     if (RC == N2)
                     {
                         DiscardIFrameQueue();
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorG));
-                        Output(new DL_DISCONNECT_Indication(this));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorG));
+                        Output(new DL_DISCONNECT_Indication());
                         m_state = State_T.Disconnected;
                     }
                     else
@@ -1170,8 +1145,8 @@ namespace OpenAX25_Protocol
                 case State_T.AwaitingRelease:
                     if (RC == N2)
                     {
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorH));
-                        Output(new DL_DISCONNECT_Confirm(this));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorH));
+                        Output(new DL_DISCONNECT_Confirm());
                         m_state = State_T.Disconnected;
                     }
                     else
@@ -1196,12 +1171,12 @@ namespace OpenAX25_Protocol
                     }
                     if (V_A == V_S) 
                         if (PeerReceiverBusy)
-                            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorU));
+                            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorU));
                         else
-                            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorT));
+                            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorT));
                     else
-                        Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorI));
-                    Output(new DL_DISCONNECT_Request(this));
+                        Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorI));
+                    Output(new DL_DISCONNECT_Request());
                     DiscardIFrameQueue();
                     Output(new AX25_DM(F));
                     m_state = State_T.Disconnected;
@@ -1249,7 +1224,7 @@ namespace OpenAX25_Protocol
         }
 
         private void ControlFieldError() {
-            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorL));
+            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorL));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
             {
                 DiscardIFrameQueue();
@@ -1261,7 +1236,7 @@ namespace OpenAX25_Protocol
 
         private void InfoNotPermittedInFrame()
         {
-            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorM));
+            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorM));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
             {
                 DiscardIFrameQueue();
@@ -1273,7 +1248,7 @@ namespace OpenAX25_Protocol
 
         private void IncorrectUorSFrameLength()
         {
-            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorN));
+            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorN));
             if ((m_state == State_T.Connected) || (m_state == State_T.TimerRecovery))
             {
                 DiscardIFrameQueue();
@@ -1296,7 +1271,7 @@ namespace OpenAX25_Protocol
             V_S = 0;
             V_A = 0;
             V_R = 0;
-            Output(new DL_CONNECT_Indication(this, modulo));
+            Output(new DL_CONNECT_Indication(modulo));
             SRT = m_config.SRT;
             T1V = 2 * SRT;
             T3.Start(T3V);
@@ -1309,11 +1284,11 @@ namespace OpenAX25_Protocol
             F = p;
             Output(new AX25_UA(F));
             ClearExceptionConditions();
-            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorF));
+            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorF));
             if (V_S != V_A)
             {
                 DiscardIFrameQueue();
-                Output(new DL_CONNECT_Indication(this, m_modulo));
+                Output(new DL_CONNECT_Indication(m_modulo));
             }
             T1.Stop();
             T3.Start(T3V);
@@ -1399,17 +1374,17 @@ namespace OpenAX25_Protocol
 
         private void NrErrorRecovery()
         {
-            Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorJ));
+            Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorJ));
             EstablishDataLink(m_version);
             ClearLayer3Initiated();
         }
 
-        private void EstablishDataLink(Version_T version)
+        private void EstablishDataLink(AX25Version version)
         {
             ClearExceptionConditions();
             RC = 0;
             P = true;
-            if (version == Version_T.V2_0)
+            if (version == AX25Version.V2_0)
                 Output(new AX25_SABM(P));
             else
                 Output(new AX25_SABME(P));
@@ -1492,7 +1467,7 @@ namespace OpenAX25_Protocol
                 EnquiryResponse(true);
             else
                 if ((f.Response) && F)
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorA));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorA));
         }
 
         private void UI_Check(AX25_UI f)
@@ -1501,16 +1476,16 @@ namespace OpenAX25_Protocol
             {
                 if (f.InfoFieldLength > N1)
                 {
-                    Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorK));
+                    Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorK));
                 }
                 else
                 {
-                    Output(new DL_UNIT_DATA_Indication(this, f.I));
+                    Output(new DL_UNIT_DATA_Indication(f.I));
                 }
             }
             else
             {
-                Output(new DL_ERROR_Indication(this, ErrorCode_T.ErrorQ));
+                Output(NewDL_ERROR_Indication(ErrorCode_T.ErrorQ));
             }
         }
 
@@ -1532,18 +1507,18 @@ namespace OpenAX25_Protocol
             }
         }
 
-        private void SetVersion(Version_T version)
+        private void SetVersion(AX25Version version)
         {
             switch (version)
             {
-                case Version_T.V2_0:
+                case AX25Version.V2_0:
                     m_modulo = AX25Modulo.MOD8;
                     N1R = 2048;
                     kR = 4;
                     T2 = 3000;
                     N2 = 10;
                     break;
-                case Version_T.V2_2:
+                case AX25Version.V2_2:
                     m_modulo = AX25Modulo.MOD128;
                     N1R = 2048;
                     kR = 32;
@@ -1567,6 +1542,11 @@ namespace OpenAX25_Protocol
 
         private void PushIFrameOnQueue()
         {
+        }
+
+        private DL_ERROR_Indication NewDL_ERROR_Indication(ErrorCode_T erc)
+        {
+            return new DL_ERROR_Indication((long)erc, ErrorCode_N[erc]);
         }
 
     }

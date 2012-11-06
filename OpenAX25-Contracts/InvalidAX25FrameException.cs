@@ -1,5 +1,5 @@
 ﻿//
-// L2InvalidPropertyException.cs
+// L2InvalidAX25FrameException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,15 +25,15 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Raised when a mandatory property have a invalid value.
+	/// Description of L2InvalidAX25FrameException.
 	/// </summary>
-	public class L2InvalidPropertyException : Exception
+	public class InvalidAX25FrameException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2InvalidPropertyException(string message) : base("Invalid property: " + message) {}
+		public InvalidAX25FrameException(string message) : base("Invalid XX.25 frame: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -41,7 +41,7 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2InvalidPropertyException(string message, Exception innerException)
-            : base("Invalid property: " + message, innerException) { }
+		public InvalidAX25FrameException(string message, Exception innerException)
+            : base("Invalid XX.25 frame: " + message, innerException) { }
 	}
 }

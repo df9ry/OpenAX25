@@ -9,8 +9,8 @@ namespace OpenAX25_Protocol
     public class AX25_XID : AX25UFrame
     {
 
-        public AX25_XID(byte[] i, bool pf)
-            : base(new byte[1 + i.Length])
+        public AX25_XID(byte[] i, bool pf, bool cmd = true, bool rsp = false)
+            : base(new byte[1 + i.Length], cmd, rsp)
         {
             m_octets[0] = 0xAF;
             I   = i;
@@ -24,9 +24,9 @@ namespace OpenAX25_Protocol
                 return AX25Frame_T.XID;
             }
         }
-    
-        internal AX25_XID(byte[] octets)
-            : base(octets)
+
+        internal AX25_XID(byte[] octets, bool cmd, bool rsp)
+            : base(octets, cmd, rsp)
         {
         }
 
@@ -36,7 +36,7 @@ namespace OpenAX25_Protocol
             if (PF)
                 sb.Append("(P/F)");
             sb.Append(' ');
-            sb.Append(L2HexConverter.ToHexString(I, true));
+            sb.Append(HexConverter.ToHexString(I, true));
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿//
-// L2MissingPropertyException.cs
+// L2InvalidPropertyException.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -25,15 +25,15 @@ using System;
 namespace OpenAX25Contracts
 {
 	/// <summary>
-	/// Raised when a mandatory property is not specified.
+	/// Raised when a mandatory property have a invalid value.
 	/// </summary>
-	public class L2MissingPropertyException : Exception
+	public class InvalidPropertyException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2MissingPropertyException(string message) : base("Missing property: " + message) {}
+		public InvalidPropertyException(string message) : base("Invalid property: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -41,7 +41,7 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2MissingPropertyException(string message, Exception innerException)
-            : base("Missing property: " + message, innerException) { }
+		public InvalidPropertyException(string message, Exception innerException)
+            : base("Invalid property: " + message, innerException) { }
 	}
 }

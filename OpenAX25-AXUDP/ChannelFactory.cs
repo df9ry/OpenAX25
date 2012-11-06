@@ -30,7 +30,7 @@ namespace OpenAX25AXUDP
 	/// <summary>
 	/// ChannelFactory for KISS.
 	/// </summary>
-	public class ChannelFactory : IL2ChannelFactory
+	public class ChannelFactory : IChannelFactory
 	{
 
 		/// <summary>
@@ -54,7 +54,7 @@ namespace OpenAX25AXUDP
 		/// </summary>
 		/// <param name="properties">Proeprties for this AXUDP channel.</param>
 		/// <returns>New AXUDP channel.</returns>
-		public IL2Channel CreateChannel(IDictionary<string,string> properties)
+		public IChannel CreateChannel(IDictionary<string,string> properties)
 		{
 			return new AXUDPChannel(properties);
 		}

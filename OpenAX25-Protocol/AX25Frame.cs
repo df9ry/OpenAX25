@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
@@ -38,10 +38,12 @@ namespace OpenAX25_Protocol
             { AX25Frame_T.XID,   "XID"   }
         };
 
-        protected AX25Frame(byte[] octets, AX25Modulo modulo)
+        protected AX25Frame(byte[] octets, AX25Modulo modulo, bool cmd, bool rsp)
         {
             m_octets = octets;
             m_modulo = modulo;
+            m_command = cmd;
+            m_response = rsp;
         }
 
         public abstract AX25Frame_T FrameType { get; }
@@ -51,22 +53,6 @@ namespace OpenAX25_Protocol
             get
             {
                 return N[FrameType];
-            }
-        }
-
-        public virtual bool Poll
-        {
-            get
-            {
-                return false;
-            }
-        }
-
-        public virtual bool Final
-        {
-            get
-            {
-                return false;
             }
         }
 
@@ -94,21 +80,21 @@ namespace OpenAX25_Protocol
             }
         }
 
-        public static AX25Frame Create(byte[] octets, bool isCommand, bool isResponse,
-            DataLinkStateMachine.Version_T version = DataLinkStateMachine.Version_T.V2_0)
+        public static AX25Frame Create(byte[] octets, bool cmd, bool rsp,
+            AX25Version version = AX25Version.V2_0)
         {
-            AX25Modulo modulo = (version == DataLinkStateMachine.Version_T.V2_2) ?
+            AX25Modulo modulo = (version == AX25Version.V2_2) ?
                 AX25Modulo.MOD128 : AX25Modulo.MOD8;
             if (octets == null)
                 throw new ArgumentNullException("octets");
             if (octets.Length == 0)
-                return new AX25InvalidFrame(octets);
+                return new AX25InvalidFrame(octets, cmd, rsp);
             if ((octets[0] & 0x01) == 0x00) // I-Frame:
-                return new AX25_I(octets, modulo);
+                return new AX25_I(octets, modulo, cmd, rsp);
             if ((octets[0] & 0x02) == 0x00) // S-Frame:
-                return AX25SFrame.Create(octets, modulo);
+                return AX25SFrame.Create(octets, modulo, cmd, rsp);
             else
-                return AX25UFrame.Create(octets);
+                return AX25UFrame.Create(octets, cmd, rsp);
         }
 
         protected static int Size(AX25Modulo modulo)

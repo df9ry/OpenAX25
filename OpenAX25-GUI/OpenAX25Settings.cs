@@ -38,12 +38,12 @@ namespace OpenAX25GUI
 		
 		[UserScopedSetting()]
 		[DefaultSettingValue("INFO")]
-		public L2LogLevel LogLevel {
+		public LogLevel LogLevel {
 			get {
-				return (L2LogLevel)this["LogLevel"];
+				return (LogLevel)this["LogLevel"];
 			}
 			set {
-				if ((L2LogLevel)this["LogLevel"] == value)
+				if ((LogLevel)this["LogLevel"] == value)
 					return;
 				this["LogLevel"] = value;
 				dirty = true;

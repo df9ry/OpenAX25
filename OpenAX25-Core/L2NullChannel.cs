@@ -1,5 +1,5 @@
 ﻿//
-// NullChannel
+// L2NullChannel
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -31,12 +31,12 @@ namespace OpenAX25Core
 	/// <summary>
 	/// The dummy channel.
 	/// </summary>
-	internal class NullChannel : IL2Channel
+	internal class L2NullChannel : IL2Channel
 	{
 	
 		private IDictionary<string,string> m_properties = new Dictionary<string,string>();
 		
-		internal NullChannel()
+		internal L2NullChannel()
 		{
 			m_properties.Add("Name", Name);
 		}
@@ -49,7 +49,7 @@ namespace OpenAX25Core
 		/// <value>
 		/// The unique name of this channel.
 		/// </value>
-		public string Name { get { return "NULL"; } }
+		public string Name { get { return "L2NULL"; } }
 
 		/// <summary>
 		/// Gets the properties of this channel.
@@ -62,7 +62,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Get or set the target channel for received data.
         /// </summary>
-        public IL2Channel Target { get { return null; } set {} }
+        public IL2Channel L2Target { get { return null; } set {} }
 		
 		/// <summary>
 		/// Open the interface.

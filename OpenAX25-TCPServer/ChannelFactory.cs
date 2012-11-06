@@ -22,14 +22,12 @@
 
 using System;
 using System.Collections.Generic;
-
+using System.Linq;
+using System.Text;
 using OpenAX25Contracts;
 
-namespace OpenAX25Kiss
+namespace OpenAX25_TCPServer
 {
-	/// <summary>
-	/// ChannelFactory for KISS.
-	/// </summary>
 	public class ChannelFactory : IChannelFactory
 	{
 
@@ -40,24 +38,24 @@ namespace OpenAX25Kiss
 		
 		/// <summary>
 		/// The channel class name of this KISS implementation.
-		/// <c>KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95</c>
+		/// <c>TCPSERVER:3a97ecf0-6740-4478-92a9-539b293ec59d</c>
 		/// </summary>
 		public string ChannelClass
 		{
 			get {
-				return "KISS:d43ae3ea-cbd9-4f19-ac17-d0722c645e95";
+				return "TCPSERVER:3a97ecf0-6740-4478-92a9-539b293ec59d";
 			}
 		}
 		
 		/// <summary>
-		/// Create a new KISS channel.
+		/// Create a new TCPServer channel.
 		/// </summary>
-		/// <param name="properties">Proeprties for this KISS channel.</param>
-		/// <returns>New KISS channel.</returns>
+		/// <param name="properties">Proeprties for this TCPServer channel.</param>
+		/// <returns>New AXUDP channel.</returns>
 		public IChannel CreateChannel(IDictionary<string,string> properties)
 		{
-			return new KissChannel(properties);
+			return new TCPServerChannel(properties);
 		}
 		
-	}
+    }
 }

@@ -46,11 +46,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Channel.cs" />
+    <Compile Include="L3NullChannel.cs" />
     <Compile Include="CrcB.cs" />
-    <Compile Include="L2HexConverter.cs" />
+    <Compile Include="HexConverter.cs" />
     <Compile Include="L2Channel.cs" />
-    <Compile Include="L2Runtime.cs" />
-    <Compile Include="NullChannel.cs" />
+    <Compile Include="L3Channel.cs" />
+    <Compile Include="Runtime.cs" />
+    <Compile Include="L2NullChannel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

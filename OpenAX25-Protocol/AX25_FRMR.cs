@@ -8,8 +8,8 @@ namespace OpenAX25_Protocol
     public class AX25_FRMR : AX25UFrame
     {
 
-        public AX25_FRMR(bool f)
-            : base(new byte[1])
+        public AX25_FRMR(bool f, bool cmd = true, bool rsp = false)
+            : base(new byte[1], cmd, rsp)
         {
             m_octets[0] = 0x87;
             PF  = f;
@@ -22,9 +22,9 @@ namespace OpenAX25_Protocol
                 return AX25Frame_T.FRMR;
             }
         }
-    
-        internal AX25_FRMR(byte[] octets)
-            : base(octets)
+
+        internal AX25_FRMR(byte[] octets, bool cmd, bool rsp)
+            : base(octets, cmd, rsp)
         {
         }
 

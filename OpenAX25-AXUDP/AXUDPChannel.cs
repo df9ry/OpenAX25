@@ -73,7 +73,7 @@ namespace OpenAX25AXUDP
 				if (m_port <= 0)
 					throw new ArgumentOutOfRangeException("Port");
 			} catch (Exception ex) {
-				throw new L2InvalidPropertyException("Port (Greater than 0): " + _port, ex);
+				throw new InvalidPropertyException("Port (Greater than 0): " + _port, ex);
 			}
 			
 			bool any = ("Any".Equals(m_host));
@@ -88,7 +88,7 @@ namespace OpenAX25AXUDP
 				else
 					throw new ArgumentOutOfRangeException("Mode");
 			} catch (Exception ex) {
-				throw new L2InvalidPropertyException("Mode (Client|Server): " + _mode, ex);
+				throw new InvalidPropertyException("Mode (Client|Server): " + _mode, ex);
 			}
 			
 		}
@@ -135,7 +135,7 @@ namespace OpenAX25AXUDP
 							try {
 								port = Int32.Parse(_port);
 							} catch (Exception ex) {
-								m_runtime.Log(L2LogLevel.WARNING, m_name,
+								m_runtime.Log(LogLevel.WARNING, m_name,
 								              "Invalid port number ignored " +
 								              _port + ": " + ex.Message);
 								port = m_port;

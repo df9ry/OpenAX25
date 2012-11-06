@@ -42,7 +42,7 @@ namespace OpenAX25Contracts
 			this.destination = new L2Callsign(octets, 0, out last);
             this.isCommand = this.destination.chBit;
             if (last)
-				throw new L2InvalidAX25FrameException("Source field missing");
+				throw new InvalidAX25FrameException("Source field missing");
 			this.source = new L2Callsign(octets, 7, out last);
             this.isResponse = this.source.chBit;
             if (last)

@@ -27,13 +27,13 @@ namespace OpenAX25Contracts
 	/// <summary>
 	/// Description of L2DuplicateNameException.
 	/// </summary>
-	public class L2DuplicateNameException : Exception
+	public class DuplicateNameException : Exception
 	{
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="message">The message attached to this exception.</param>
-		public L2DuplicateNameException(string message) : base("Duplicate name: " + message) {}
+		public DuplicateNameException(string message) : base("Duplicate name: " + message) {}
 		
 		/// <summary>
 		/// Cionstructor.
@@ -41,7 +41,7 @@ namespace OpenAX25Contracts
 		/// <param name="message">The message attached to this exception.</param>
 		/// <param name="innerException">Inner exception attached to this
 		/// exception</param>
-		public L2DuplicateNameException(string message, Exception innerException)
+		public DuplicateNameException(string message, Exception innerException)
             : base("Duplicate name: " + message, innerException) { }
 	}
 }
