@@ -31,14 +31,15 @@ namespace OpenAX25Contracts
 	public interface IL3Channel : IChannel
 	{
         /// <summary>
-        /// Get or set the target channel for received data.
+        /// Get or set the target channel.
         /// </summary>
         IL3Channel L3Target { get; set; }
 
         /// <summary>
         /// Send a primitive over the channel.
         /// </summary>
+        /// <param name="sender">The sender of this primitive.</param>
         /// <param name="message">The primitive to send.</param>
-        void Send(DataLinkPrimitive message);
+        void Send(ILocalEndpoint sender, DataLinkPrimitive message);
     }
 }

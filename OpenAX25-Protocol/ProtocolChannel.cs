@@ -36,13 +36,10 @@ namespace OpenAX25_Protocol
         /** Management parameters */
         private readonly int NM201; // Maximum number of retries of the XID command.
         /** Data Link parameters */
-        private readonly int  Initial_SRT;   // Initial smoothed round trip time
-        private readonly int  Initial_SAT;   // Ínitial smoothed activity timer
-        private readonly long Initial_T1V;   // Initial T1 timer
-        private readonly long Initial_T2V;   // Initial T2 timer
-        private readonly long Initial_T3V;   // Initial T3 timer
-        private readonly int  Initial_N1;    // Initial N1 - Maximum number of octets in the information field of a frame.
-        private readonly int  Initial_N2;    // Initial N2 - Maximum number of retires permitted.
+        internal readonly int Initial_SRT;   // Initial smoothed round trip time
+        internal readonly int Initial_SAT;   // Ínitial smoothed activity timer
+        internal readonly int Initial_N1;    // Initial N1 - Maximum number of octets in the information field of a frame.
+        internal readonly int Initial_N2;    // Initial N2 - Maximum number of retires permitted.
         private readonly DataLinkProviderProxy m_dataLinkProviderProxy;
 
         private IL3Channel m_l3target;
@@ -58,11 +55,8 @@ namespace OpenAX25_Protocol
         ///   <item><term>L3Target</term><description>Where to route L3 data to [Default: PROTO]</description></item>
         ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
         ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
-        ///   <item><term>T1</term><description>Ínitial T1 timer in ms [Default: 3000]</description></item>
-        ///   <item><term>T2</term><description>Ínitial T2 timer in ms [Default: 3000]</description></item>
-        ///   <item><term>T3</term><description>Ínitial T3 timer in ms [Default: 30000]</description></item>
         ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
-        ///   <item><term>N1</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
+        ///   <item><term>N2</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
         /// </list>
 		/// </param>
 		public ProtocolChannel(IDictionary<string,string> properties)
@@ -92,39 +86,6 @@ namespace OpenAX25_Protocol
                 throw new InvalidPropertyException("SAT", ex);
             }
 
-            if (!properties.TryGetValue("T1", out _v))
-                _v = "3000";
-            try
-            {
-                this.Initial_T1V = Int64.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("T1", ex);
-            }
-
-            if (!properties.TryGetValue("T2", out _v))
-                _v = "3000";
-            try
-            {
-                this.Initial_T2V = Int64.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("T2", ex);
-            }
-
-            if (!properties.TryGetValue("T3", out _v))
-                _v = "30000";
-            try
-            {
-                this.Initial_T3V = Int64.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("T3", ex);
-            }
-
             if (!properties.TryGetValue("N1", out _v))
                 _v = "255";
             try
@@ -137,7 +98,7 @@ namespace OpenAX25_Protocol
             }
 
             if (!properties.TryGetValue("N2", out _v))
-                _v = "10";
+                _v = "16";
             try
             {
                 this.Initial_N2 = Int32.Parse(_v);
@@ -235,8 +196,8 @@ namespace OpenAX25_Protocol
         /// </summary>
         /// <param name="address">The address to register the channel for.</param>
         /// <param name="channel">The channel that shall receive the notifications.</param>
-        /// <returns>Registration ID that can be used to unregister the channel later.</returns>
-        public Guid RegisterL3Endpoint(string address, IL3Channel channel)
+        /// <returns>LocalEndpoint for data access.</returns>
+        public ILocalEndpoint RegisterL3Endpoint(string address, IL3Channel channel)
         {
             return m_dataLinkProviderProxy.RegisterL3Endpoint(address, channel);
         }
@@ -244,19 +205,19 @@ namespace OpenAX25_Protocol
         /// <summary>
         /// Unattach an endpoint that where previously registeres fo a channel.
         /// </summary>
-        /// <param name="registration">The registration Guid previously registered.</param>
-        public void UnregisterL3Endpoint(Guid registration)
+        /// <param name="ep">The LocalEndpoint.</param>
+        public void UnregisterL3Endpoint(ILocalEndpoint ep)
         {
-            m_dataLinkProviderProxy.UnregisterL3Endpoint(registration);
+            m_dataLinkProviderProxy.UnregisterL3Endpoint(ep);
         }
 
-                /// <summary>
+        /// <summary>
         /// Send a Data Link primitive to the serving object.
         /// </summary>
         /// <param name="p">Data Link primitive to send.</param>
-        public virtual void Send(DataLinkPrimitive p)
+        public virtual void Send(ILocalEndpoint sender, DataLinkPrimitive p)
         {
-            m_dataLinkProviderProxy.Send(p);
+            m_dataLinkProviderProxy.Send(sender, p);
         }
 
     }

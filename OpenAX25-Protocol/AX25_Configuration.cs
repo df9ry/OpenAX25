@@ -2,25 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
-    internal class AX25_Configuration
+    internal struct AX25_Configuration
     {
-        internal long SAT
+        internal AX25_Configuration(string name)
         {
-            get
-            {
-                return 100;
-            }
+            this.name = name;
+            this.Initial_SAT = 300;
+            this.Initial_SRT = 3000;
+            this.Initial_N1 = 255;
+            this.Initial_N2 = 10;
         }
 
-        internal long SRT
-        {
-            get
-            {
-                return 100;
-            }
-        }
+        internal string name;
+
+        internal long Initial_SAT;
+        internal long Initial_SRT;
+        internal long Initial_N1;
+        internal long Initial_N2;
     }
 }

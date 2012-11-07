@@ -58,6 +58,7 @@
     <Compile Include="IChannelFactory.cs" />
     <Compile Include="IL3Channel.cs" />
     <Compile Include="IL3DataLinkProvider.cs" />
+    <Compile Include="ILocalEndpoint.cs" />
     <Compile Include="ILogProvider.cs" />
     <Compile Include="IMonitorProvider.cs" />
     <Compile Include="NotFoundException.cs" />

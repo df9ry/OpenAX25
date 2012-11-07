@@ -8,17 +8,24 @@ namespace OpenAX25_Protocol
     internal class DataLinkProviderProxy : L3Channel, IL3DataLinkProvider
     {
         private readonly ProtocolChannel m_channel;
-        private readonly IDictionary<Guid, LocalEndpoint> m_registrations = new Dictionary<Guid, LocalEndpoint>();
+        private readonly AX25_Configuration m_config;
         private readonly IDictionary<string, LocalEndpoint> m_addresses = new Dictionary<string, LocalEndpoint>();
 
         internal DataLinkProviderProxy(ProtocolChannel channel)
             : base(GetProperties(channel), true)
         {
             m_channel = channel;
+            m_config = new AX25_Configuration(m_name);
+            m_config.Initial_N1 = channel.Initial_N1;
+            m_config.Initial_N2 = channel.Initial_N2;
+            m_config.Initial_SAT = channel.Initial_SAT;
+            m_config.Initial_SRT = channel.Initial_SRT;
         }
 
-        protected override void Input(DataLinkPrimitive p)
+        protected override void Input(ILocalEndpoint le, DataLinkPrimitive p)
         {
+            m_runtime.Log(LogLevel.INFO, m_name, "Received " + p.DataLinkPrimitiveTypeName);
+            ((LocalEndpoint)le).m_machine.Input(p);
         }
 
         /// <summary>
@@ -27,8 +34,8 @@ namespace OpenAX25_Protocol
         /// </summary>
         /// <param name="address">The address to register the channel for.</param>
         /// <param name="channel">The channel that shall receive the notifications.</param>
-        /// <returns>Registration ID that can be used to unregister the channel later.</returns>
-        public Guid RegisterL3Endpoint(string address, IL3Channel channel)
+        /// <returns>Local endpoint that can be used for later communication.</returns>
+        public ILocalEndpoint RegisterL3Endpoint(string address, IL3Channel channel)
         {
             lock (this)
             {
@@ -40,29 +47,23 @@ namespace OpenAX25_Protocol
                     LogLevel.INFO, m_name, "Register local endpoint \"" + ky + "\"");
                 if (m_addresses.ContainsKey(ky))
                     throw new DuplicateNameException("Address: \"" + ky + "\" already registered");
-                LocalEndpoint ep = new LocalEndpoint(cs, ky, channel);
+                LocalEndpoint ep = new LocalEndpoint(cs, ky, channel, m_config);
                 m_addresses.Add(ky, ep);
-                m_registrations.Add(ep.id, ep);
-                return ep.id;
+                return ep;
             }
         }
 
         /// <summary>
         /// Unattach an endpoint that where previously registeres fo a channel.
         /// </summary>
-        /// <param name="registration">The registration Guid previously registered.</param>
-        public void UnregisterL3Endpoint(Guid registration)
+        /// <param name="registration">Local Endpoint to unregister.</param>
+        public void UnregisterL3Endpoint(ILocalEndpoint ep)
         {
             lock (this)
             {
-                if (!m_registrations.ContainsKey(registration))
-                    throw new NotFoundException(
-                        "Endpoint with registration \"" + registration + "\" not found.");
-                LocalEndpoint ep = m_registrations[registration];
                 m_runtime.Log(
-                    LogLevel.INFO, m_name, "Unregister local endpoint \"" + ep.ky + "\"");
-                m_registrations.Remove(registration);
-                m_addresses.Remove(ep.ky);
+                    LogLevel.INFO, m_name, "Unregister local endpoint \"" + ep.Address + "\"");
+                m_addresses.Remove(((LocalEndpoint)ep).ky);
             }
         }
 
@@ -73,5 +74,6 @@ namespace OpenAX25_Protocol
             prop.Add("Target", "L3NULL");
             return prop;
         }
+
     }
 }

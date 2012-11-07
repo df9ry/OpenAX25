@@ -67,7 +67,7 @@ namespace OpenAX25Contracts
         };
 
         /// <summary>
-        /// Statndard constructor.
+        /// Standard constructor.
         /// </summary>
         protected DataLinkPrimitive()
         {
@@ -96,14 +96,19 @@ namespace OpenAX25Contracts
     public sealed class DL_CONNECT_Request : DataLinkPrimitive
     {
         private readonly AX25Modulo m_modulo;
+        private readonly string m_remoteAddr;
 
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="remoteAddr">Address of the remote station.</param>
         /// <param name="modulo">AX.25 Modulo format.</param>
-        public DL_CONNECT_Request(AX25Modulo modulo = AX25Modulo.MOD8)
+        public DL_CONNECT_Request(string remoteAddr, AX25Modulo modulo = AX25Modulo.MOD8)
             : base()
         {
+            if (remoteAddr == null)
+                throw new ArgumentNullException("remoteAddr");
+            m_remoteAddr = remoteAddr;
             if (modulo == AX25Modulo.UNSPECIFIED)
                 modulo = AX25Modulo.MOD8;
             m_modulo = modulo;
@@ -112,11 +117,15 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="remoteAddr">Address of the remote station.</param>
         /// <param name="version">AX.25 Version.</param>
-        public DL_CONNECT_Request(AX25Version version)
+        public DL_CONNECT_Request(string remoteAddr, AX25Version version)
             : base()
         {
-            m_modulo = (version == AX25Version.V2_0)?AX25Modulo.MOD8:AX25Modulo.MOD128;
+            if (remoteAddr == null)
+                throw new ArgumentNullException("remoteAddr");
+            m_remoteAddr = remoteAddr;
+            m_modulo = (version == AX25Version.V2_0) ? AX25Modulo.MOD8 : AX25Modulo.MOD128;
         }
 
         /// <summary>
@@ -126,6 +135,17 @@ namespace OpenAX25Contracts
         {
             get {
                 return DataLinkPrimitive_T.DL_CONNECT_Request_T;
+            }
+        }
+
+        /// <summary>
+        /// Get remote address.
+        /// </summary>
+        public string RemoteAddr
+        {
+            get
+            {
+                return m_remoteAddr;
             }
         }
 
@@ -159,25 +179,45 @@ namespace OpenAX25Contracts
     public sealed class DL_CONNECT_Indication : DataLinkPrimitive
     {
         private readonly AX25Modulo m_modulo;
+        private readonly string m_remoteAddr;
 
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="remoteAddr">Address of the remote station.</param>
         /// <param name="modulo">AX.25 Modulo format.</param>
-        public DL_CONNECT_Indication(AX25Modulo modulo)
+        public DL_CONNECT_Indication(string remoteAddr, AX25Modulo modulo)
             : base()
         {
+            if (remoteAddr == null)
+                throw new ArgumentNullException("remoteAddr");
+            m_remoteAddr = remoteAddr;
             m_modulo = modulo;
         }
 
         /// <summary>
         /// Constructor.
         /// </summary>
+        /// <param name="remoteAddr">Address of the remote station.</param>
         /// <param name="version">AX.25 Version.</param>
-        public DL_CONNECT_Indication(AX25Version version)
+        public DL_CONNECT_Indication(string remoteAddr, AX25Version version)
             : base()
         {
-            m_modulo = (version == AX25Version.V2_0)?AX25Modulo.MOD8:AX25Modulo.MOD128;
+            if (remoteAddr == null)
+                throw new ArgumentNullException("remoteAddr");
+            m_remoteAddr = remoteAddr;
+            m_modulo = (version == AX25Version.V2_0) ? AX25Modulo.MOD8 : AX25Modulo.MOD128;
+        }
+
+        /// <summary>
+        /// Get remote address.
+        /// </summary>
+        public string RemoteAddr
+        {
+            get
+            {
+                return m_remoteAddr;
+            }
         }
 
         /// <summary>

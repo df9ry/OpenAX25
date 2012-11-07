@@ -82,8 +82,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Send message over the channel.
         /// </summary>
-        /// <param name="_">Message to send.</param>
-        public void Send(DataLinkPrimitive _) {}
+        public void Send(ILocalEndpoint _le, DataLinkPrimitive _p) {}
 
     }
 }

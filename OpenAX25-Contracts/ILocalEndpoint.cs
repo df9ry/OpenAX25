@@ -1,5 +1,5 @@
 ﻿//
-// IL3DataLinkProvider.cs
+// ILocalEndpoint.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -20,26 +20,26 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>
 //
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
 namespace OpenAX25Contracts
 {
     /// <summary>
-    /// A Layer 3 channel that provides a Data Link connection.
+    /// Instance that represents a local endpoint for a communication.
     /// </summary>
-    public interface IL3DataLinkProvider : IL3Channel
+    public interface ILocalEndpoint
     {
         /// <summary>
-        /// Attach an endpoint with an address and request notifications to the
-        /// assosiated channel.
+        /// Get unique ID of the endpoint.
         /// </summary>
-        /// <param name="address">The address to register the channel for.</param>
-        /// <param name="channel">The channel that shall receive the notifications.</param>
-        /// <returns>LocalEndpoint object to use for later conversation.</returns>
-        ILocalEndpoint RegisterL3Endpoint(string address, IL3Channel channel);
+        Guid Id { get; }
 
         /// <summary>
-        /// Unattach an endpoint that where previously registered for a channel.
+        /// Get the address of this endpoint.
         /// </summary>
-        /// <param name="registration">The registration Guid previously registered.</param>
-        void UnregisterL3Endpoint(ILocalEndpoint registration);
+        string Address { get; }
     }
 }
