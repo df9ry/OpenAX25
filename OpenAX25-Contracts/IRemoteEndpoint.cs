@@ -1,5 +1,5 @@
 ﻿//
-// IL3DataLinkProvider.cs
+// IRemoteEndpoint.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -20,26 +20,17 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>
 //
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
 namespace OpenAX25Contracts
 {
     /// <summary>
-    /// A Layer 3 channel that provides a Data Link connection.
+    /// Instance that represents a local endpoint for a communication.
     /// </summary>
-    public interface IL3DataLinkProvider : IL3Channel
+    public interface IRemoteEndpoint : IEndpoint
     {
-        /// <summary>
-        /// Attach an endpoint with an address and request notifications to the
-        /// assosiated channel.
-        /// </summary>
-        /// <param name="sourceAddr">The address of the sender.</param>
-        /// <param name="target path">Path to send packets to.</param>
-        /// <returns>Connection object to use for later conversation.</returns>
-        IConnection RegisterConnection(string sourceAddr, string targetPath);
-
-        /// <summary>
-        /// Unattach a connection that where previously registered.
-        /// </summary>
-        /// <param name="connection">The connection to unregister.</param>
-        void UnregisterConnection(IConnection connection);
     }
 }

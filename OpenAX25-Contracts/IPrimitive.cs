@@ -1,5 +1,5 @@
 ﻿//
-// ILocalEndpoint.cs
+// IPrimitive.cs
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -27,10 +27,7 @@ using System.Text;
 
 namespace OpenAX25Contracts
 {
-    /// <summary>
-    /// Instance that represents a local endpoint for a communication.
-    /// </summary>
-    public interface ILocalEndpoint : IEndpoint
+    public interface IPrimitive
     {
     }
 }

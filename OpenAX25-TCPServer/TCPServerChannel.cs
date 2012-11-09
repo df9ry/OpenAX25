@@ -189,7 +189,7 @@ namespace OpenAX25_TCPServer
                 try
                 {
                     base.Open();
-                    m_localEndpoint = ((IL3DataLinkProvider)m_target).RegisterL3Endpoint(m_localAddr, this);
+                    m_localEndpoint = ((IL3DataLinkProvider)m_target).RegisterConnection(m_localAddr, this);
                     m_thread = new Thread(new ThreadStart(ServiceRun));
                     m_thread.Start();
                 }
@@ -199,7 +199,7 @@ namespace OpenAX25_TCPServer
                     m_thread = null;
                     if (m_localEndpoint != null)
                     {
-                        ((IL3DataLinkProvider)m_target).UnregisterL3Endpoint(m_localEndpoint);
+                        ((IL3DataLinkProvider)m_target).UnregisterConnection(m_localEndpoint);
                         m_localEndpoint = null;
                     }
                 }
@@ -221,7 +221,7 @@ namespace OpenAX25_TCPServer
                     m_thread.Join();
                     if (m_localEndpoint != null)
                     {
-                        ((IL3DataLinkProvider)m_target).UnregisterL3Endpoint(m_localEndpoint);
+                        ((IL3DataLinkProvider)m_target).UnregisterConnection(m_localEndpoint);
                         m_localEndpoint = null;
                     }
                 }

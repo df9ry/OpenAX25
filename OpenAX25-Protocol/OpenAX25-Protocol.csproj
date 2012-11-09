@@ -65,6 +65,7 @@
     <Compile Include="AX25_XID.cs" />
     <Compile Include="ChannelFactory.cs" />
     <Compile Include="DataLinkProviderProxy.cs" />
+    <Compile Include="Connection.cs" />
     <Compile Include="LocalEndpoint.cs" />
     <Compile Include="ProtocolChannel.cs" />
     <Compile Include="DataLinkStateMachine.cs" />

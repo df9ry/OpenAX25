@@ -48,7 +48,7 @@ namespace OpenAX25Contracts
     /// <summary>
     /// Abstract super class for all Data Link Primitives.
     /// </summary>
-    public abstract class DataLinkPrimitive
+    public abstract class DataLinkPrimitive : IPrimitive
     {
         private static readonly IDictionary<DataLinkPrimitive_T, string> N = new Dictionary<DataLinkPrimitive_T, string> {
             { DataLinkPrimitive_T.DL_CONNECT_Request_T, "DL_CONNECT_Request" },

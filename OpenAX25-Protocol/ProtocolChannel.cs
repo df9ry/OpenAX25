@@ -1,5 +1,5 @@
 ﻿//
-// ProtocolChannel.cs
+// ProtocolChannel.m_sourceCall
 // 
 //  Author:
 //       Tania Knoebl (DF9RY) DF9RY@DARC.de
@@ -197,18 +197,18 @@ namespace OpenAX25_Protocol
         /// <param name="address">The address to register the channel for.</param>
         /// <param name="channel">The channel that shall receive the notifications.</param>
         /// <returns>LocalEndpoint for data access.</returns>
-        public ILocalEndpoint RegisterL3Endpoint(string address, IL3Channel channel)
+        public ILocalEndpoint RegisterConnection(string address, IL3Channel channel)
         {
-            return m_dataLinkProviderProxy.RegisterL3Endpoint(address, channel);
+            return m_dataLinkProviderProxy.RegisterConnection(address, channel);
         }
 
         /// <summary>
         /// Unattach an endpoint that where previously registeres fo a channel.
         /// </summary>
         /// <param name="ep">The LocalEndpoint.</param>
-        public void UnregisterL3Endpoint(ILocalEndpoint ep)
+        public void UnregisterConnection(ILocalEndpoint ep)
         {
-            m_dataLinkProviderProxy.UnregisterL3Endpoint(ep);
+            m_dataLinkProviderProxy.UnregisterConnection(ep);
         }
 
         /// <summary>

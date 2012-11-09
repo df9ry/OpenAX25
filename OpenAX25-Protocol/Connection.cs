@@ -4,26 +4,30 @@ using OpenAX25Core;
 
 namespace OpenAX25_Protocol
 {
-    internal class LocalEndpoint : ILocalEndpoint
+    internal class Connection : IConnection
     {
-        internal readonly Guid id;
-        internal readonly L2Callsign cs;
-        internal readonly string ky;
-        internal readonly IL3Channel ch;
-
+        internal readonly Guid m_id;
+        internal readonly L2Callsign m_sourceCall;
+        internal readonly L2Callsign[] m_targetPath;
+        internal readonly string m_key;
         internal readonly string m_name;
         internal readonly DataLinkStateMachine m_machine;
 
         private readonly Runtime m_runtime;
 
-        internal LocalEndpoint(L2Callsign callsign, string key, IL3Channel channel, AX25_Configuration config)
+        internal Connection(L2Callsign sourceCall, L2Callsign[] targetPath, string key,
+            AX25_Configuration config)
         {
-            id = Guid.NewGuid();
-            cs = callsign;
-            ky = key;
-            ch = channel;
-
-            m_name = channel.Name + ":" + ky;
+            if (targetPath == null)
+                throw new ArgumentNullException("targetPath");
+            if (targetPath.Length == 0)
+                throw new ArgumentOutOfRangeException("targetPath.Length == 0");
+            if (String.IsNullOrEmpty(key))
+                throw new ArgumentNullException("key");
+            m_id = Guid.NewGuid();
+            m_sourceCall = sourceCall;
+            m_key = key;
+            m_name = "AX.25 connection: " + key;
             m_runtime = Runtime.Instance;
 
             m_machine = new DataLinkStateMachine(config);
@@ -39,7 +43,7 @@ namespace OpenAX25_Protocol
         {
             get
             {
-                return ky;
+                return m_key;
             }
         }
 
@@ -50,7 +54,7 @@ namespace OpenAX25_Protocol
         {
             get
             {
-                return id;
+                return m_id;
             }
         }
 

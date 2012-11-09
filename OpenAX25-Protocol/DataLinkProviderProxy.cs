@@ -35,7 +35,7 @@ namespace OpenAX25_Protocol
         /// <param name="address">The address to register the channel for.</param>
         /// <param name="channel">The channel that shall receive the notifications.</param>
         /// <returns>Local endpoint that can be used for later communication.</returns>
-        public ILocalEndpoint RegisterL3Endpoint(string address, IL3Channel channel)
+        public ILocalEndpoint RegisterConnection(string address, IL3Channel channel)
         {
             lock (this)
             {
@@ -57,7 +57,7 @@ namespace OpenAX25_Protocol
         /// Unattach an endpoint that where previously registeres fo a channel.
         /// </summary>
         /// <param name="registration">Local Endpoint to unregister.</param>
-        public void UnregisterL3Endpoint(ILocalEndpoint ep)
+        public void UnregisterConnection(ILocalEndpoint ep)
         {
             lock (this)
             {

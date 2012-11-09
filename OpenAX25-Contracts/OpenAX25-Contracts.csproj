@@ -54,6 +54,7 @@
     <Compile Include="AX25Modulo.cs" />
     <Compile Include="DataLinkPrimitive.cs" />
     <Compile Include="IChannel.cs" />
+    <Compile Include="IEndpoint.cs" />
     <Compile Include="IL2Channel.cs" />
     <Compile Include="IChannelFactory.cs" />
     <Compile Include="IL3Channel.cs" />
@@ -61,6 +62,9 @@
     <Compile Include="ILocalEndpoint.cs" />
     <Compile Include="ILogProvider.cs" />
     <Compile Include="IMonitorProvider.cs" />
+    <Compile Include="IRemoteEndpoint.cs" />
+    <Compile Include="IConnection.cs" />
+    <Compile Include="IPrimitive.cs" />
     <Compile Include="NotFoundException.cs" />
     <Compile Include="L2Callsign.cs" />
     <Compile Include="DuplicateNameException.cs" />
