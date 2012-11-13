@@ -27,6 +27,9 @@ using System.Text;
 
 namespace OpenAX25Contracts
 {
+    /// <summary>
+    /// A primitive that can be sent along a channel.
+    /// </summary>
     public interface IPrimitive
     {
     }

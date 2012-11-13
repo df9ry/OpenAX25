@@ -48,6 +48,7 @@ namespace OpenAX25_TCPServer
         private ManualResetEvent m_allDone = new ManualResetEvent(false);
         private Socket m_listener;
         private ILocalEndpoint m_localEndpoint = null;
+        private IL3Channel m_transmitter = null;
         private enum ConnectionState { DISCONNECTED, WAITING_FOR_CONNECT, CONNECTED, WAITING_FOR_DISCONNECT };
         private volatile ConnectionState m_state = ConnectionState.DISCONNECTED;
         private Object m_stateLock = new Object();
@@ -70,6 +71,10 @@ namespace OpenAX25_TCPServer
         ///   <item><term>Binary</term><description>Binary mode [default: false]</description></item>
         ///   <item><term>B1_Size</term><description>Size of input buffer 1 [default: 8192]</description></item>
         ///   <item><term>B2_Size</term><description>Size of input buffer 2 [default: 8192]</description></item>
+        ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
+        ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
+        ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
+        ///   <item><term>N2</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
         /// </list>
 		/// </param>
         public TCPServerChannel(IDictionary<string, string> properties)
@@ -189,7 +194,8 @@ namespace OpenAX25_TCPServer
                 try
                 {
                     base.Open();
-                    m_localEndpoint = ((IL3DataLinkProvider)m_target).RegisterConnection(m_localAddr, this);
+                    m_localEndpoint = ((IL3DataLinkProvider)m_target).RegisterLocalEndpoint(m_localAddr, Properties);
+                    m_transmitter = m_localEndpoint.Bind(this, Properties, m_remoteAddr);
                     m_thread = new Thread(new ThreadStart(ServiceRun));
                     m_thread.Start();
                 }
@@ -197,9 +203,14 @@ namespace OpenAX25_TCPServer
                 {
                     m_runtime.Log(LogLevel.ERROR, m_name, "Unable to open channel: " + e.Message);
                     m_thread = null;
+                    if (m_transmitter != null)
+                    {
+                        m_localEndpoint.Unbind(m_transmitter);
+                        m_transmitter = null;
+                    }
                     if (m_localEndpoint != null)
                     {
-                        ((IL3DataLinkProvider)m_target).UnregisterConnection(m_localEndpoint);
+                        ((IL3DataLinkProvider)m_target).UnregisterLocalEndpoint(m_localEndpoint);
                         m_localEndpoint = null;
                     }
                 }
@@ -221,7 +232,10 @@ namespace OpenAX25_TCPServer
                     m_thread.Join();
                     if (m_localEndpoint != null)
                     {
-                        ((IL3DataLinkProvider)m_target).UnregisterConnection(m_localEndpoint);
+                        if (m_transmitter != null)
+                            m_localEndpoint.Unbind(m_transmitter);
+                        m_transmitter = null;
+                        ((IL3DataLinkProvider)m_target).UnregisterLocalEndpoint(m_localEndpoint);
                         m_localEndpoint = null;
                     }
                 }
@@ -361,7 +375,7 @@ namespace OpenAX25_TCPServer
             {
                 Connect();
                 DL_DATA_Request rq = new DL_DATA_Request(data);
-                m_target.Send(m_localEndpoint, rq);
+                m_transmitter.Send(rq);
             }
         }
 
@@ -392,7 +406,7 @@ namespace OpenAX25_TCPServer
                 if (m_state != ConnectionState.WAITING_FOR_CONNECT)
                 {
                     DL_CONNECT_Request rq = new DL_CONNECT_Request(m_remoteAddr, m_version);
-                    m_target.Send(m_localEndpoint, rq);
+                    m_transmitter.Send(rq);
                     m_state = ConnectionState.WAITING_FOR_CONNECT;
                 }
                 do
@@ -416,7 +430,7 @@ namespace OpenAX25_TCPServer
                     if (m_state != ConnectionState.WAITING_FOR_DISCONNECT)
                     {
                         DL_DISCONNECT_Request rq = new DL_DISCONNECT_Request();
-                        m_target.Send(m_localEndpoint, rq);
+                        m_transmitter.Send(rq);
                         m_state = ConnectionState.WAITING_FOR_DISCONNECT;
                     }
                     do
@@ -436,20 +450,16 @@ namespace OpenAX25_TCPServer
         }
 
         /// <summary>
-        /// Method to process input message. Must be overriden.
+        /// Method to process input message.
         /// </summary>
         /// <param name="sender">The sender of the message.</param>
         /// <param name="p">The message to process.</param>
-        protected override void Input(ILocalEndpoint sender, DataLinkPrimitive p)
+        protected override void Input(DataLinkPrimitive p)
         {
             try
             {
                 lock (this)
                 {
-                    if (sender == null)
-                        throw new ArgumentNullException("sender");
-                    if (sender.Id != m_localEndpoint.Id)
-                        throw new ArgumentException("sender is spurious");
                     if (p == null)
                         throw new ArgumentNullException("p");
                     switch (p.DataLinkPrimitiveType)

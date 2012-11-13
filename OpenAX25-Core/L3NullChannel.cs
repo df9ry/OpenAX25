@@ -20,10 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>
 //
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using OpenAX25Contracts;
 
 namespace OpenAX25Core
@@ -82,7 +79,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Send message over the channel.
         /// </summary>
-        public void Send(ILocalEndpoint _le, DataLinkPrimitive _p) {}
+        public void Send(DataLinkPrimitive _) {}
 
     }
 }

@@ -63,7 +63,6 @@
     <Compile Include="ILogProvider.cs" />
     <Compile Include="IMonitorProvider.cs" />
     <Compile Include="IRemoteEndpoint.cs" />
-    <Compile Include="IConnection.cs" />
     <Compile Include="IPrimitive.cs" />
     <Compile Include="NotFoundException.cs" />
     <Compile Include="L2Callsign.cs" />

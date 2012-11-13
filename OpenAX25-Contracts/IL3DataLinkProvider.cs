@@ -20,26 +20,26 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>
 //
 
+using System.Collections.Generic;
 namespace OpenAX25Contracts
 {
     /// <summary>
     /// A Layer 3 channel that provides a Data Link connection.
     /// </summary>
-    public interface IL3DataLinkProvider : IL3Channel
+    public interface IL3DataLinkProvider : IL2Channel
     {
         /// <summary>
-        /// Attach an endpoint with an address and request notifications to the
-        /// assosiated channel.
+        /// Attach a new local endpoint.
         /// </summary>
-        /// <param name="sourceAddr">The address of the sender.</param>
-        /// <param name="target path">Path to send packets to.</param>
-        /// <returns>Connection object to use for later conversation.</returns>
-        IConnection RegisterConnection(string sourceAddr, string targetPath);
+        /// <param name="address">Local address of the endpoint.</param>
+        /// <param name="properties">Endpoint properties, optional.</param>
+        /// <returns>Local endopoint object that can be used to create sessions.</returns>
+        ILocalEndpoint RegisterLocalEndpoint(string address, IDictionary<string, string> properties = null);
 
         /// <summary>
-        /// Unattach a connection that where previously registered.
+        /// Unattach a local endpoint that where previously registered.
         /// </summary>
-        /// <param name="connection">The connection to unregister.</param>
-        void UnregisterConnection(IConnection connection);
+        /// <param name="endpoint">The endpoint to unregister.</param>
+        void UnregisterLocalEndpoint(ILocalEndpoint endpoint);
     }
 }

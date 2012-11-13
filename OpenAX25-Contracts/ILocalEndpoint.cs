@@ -32,5 +32,31 @@ namespace OpenAX25Contracts
     /// </summary>
     public interface ILocalEndpoint : IEndpoint
     {
+
+        /// <summary>
+        /// Attach a new session.
+        /// </summary>
+        /// <param name="receiver">Receiver channel.</param>
+        /// <param name="properties">Properties of the channel.
+        /// <list type="bullet">
+        ///   <listheader><term>Property name</term><description>Description</description></listheader>
+        ///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
+        ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
+        ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
+        ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
+        ///   <item><term>N2</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
+        /// </list>
+        /// </param>
+        /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
+        /// <returns>Transmitter channel</returns>
+        IL3Channel Bind(IL3Channel receiver, IDictionary<string,string> properties, string alias = null);
+
+        /// <summary>
+        /// Unattach a session that where previously registered.
+        /// </summary>
+        /// <param name="transmitter">
+        /// Tranmitter returned from previous call to Bind.
+        /// </param>
+        void Unbind(IL3Channel transmitter);
     }
 }

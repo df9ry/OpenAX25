@@ -50,7 +50,7 @@ namespace OpenAX25_TCPServer
             catch (Exception e)
             {
                 m_runtime.Log(LogLevel.ERROR,
-                    "TCPServer session " + m_id, "Spurious expeptionin \"Open()\": " + e.Message);
+                    "TCPServer session " + m_id, "Spurious expeption in \"Open()\": " + e.Message);
             }
         }
 

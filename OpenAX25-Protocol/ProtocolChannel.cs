@@ -30,107 +30,46 @@ using OpenAX25Contracts;
 
 namespace OpenAX25_Protocol
 {
-    class ProtocolChannel : L2Channel, IL3DataLinkProvider
+    internal class ProtocolChannel : L2Channel, IL3Channel, IL3DataLinkProvider
     {
 
-        /** Management parameters */
-        private readonly int NM201; // Maximum number of retries of the XID command.
-        /** Data Link parameters */
-        internal readonly int Initial_SRT;   // Initial smoothed round trip time
-        internal readonly int Initial_SAT;   // Ínitial smoothed activity timer
-        internal readonly int Initial_N1;    // Initial N1 - Maximum number of octets in the information field of a frame.
-        internal readonly int Initial_N2;    // Initial N2 - Maximum number of retires permitted.
-        private readonly DataLinkProviderProxy m_dataLinkProviderProxy;
-
-        private IL3Channel m_l3target;
+        private readonly IDictionary<string, LocalEndpoint> m_localAddresses =
+            new Dictionary<string, LocalEndpoint>();
 
         /// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="properties">Properties of the channel.
-		/// <list type="bullet">
-		///   <listheader><term>Property name</term><description>Description</description></listheader>
-		///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
-		///   <item><term>Target</term><description>Where to route packages to [Default: ROUTER]</description></item>
-        ///   <item><term>L3Target</term><description>Where to route L3 data to [Default: PROTO]</description></item>
-        ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
-        ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
-        ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
-        ///   <item><term>N2</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
+        /// Constructor.
+        /// </summary>
+        /// <param name="properties">Properties of the channel.
+        /// <list type="bullet">
+        ///   <listheader><term>Property name</term><description>Description</description></listheader>
+        ///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
+        ///   <item><term>Target</term><description>
+        ///   Where to attach this channel to [Optional, default: ROUTER]</description></item>
         /// </list>
-		/// </param>
-		public ProtocolChannel(IDictionary<string,string> properties)
+        /// </param>
+        internal ProtocolChannel(IDictionary<string, string> properties)
 			: base(properties)
 		{
-            string _v;
-
-            if (!properties.TryGetValue("SRT", out _v))
-                _v = "3000";
-            try
-            {
-                this.Initial_SRT= Int32.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("SRT", ex);
-            }
-
-            if (!properties.TryGetValue("SAT", out _v))
-                _v = "10000";
-            try
-            {
-                this.Initial_SAT = Int32.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("SAT", ex);
-            }
-
-            if (!properties.TryGetValue("N1", out _v))
-                _v = "255";
-            try
-            {
-                this.Initial_N1 = Int32.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("N1", ex);
-            }
-
-            if (!properties.TryGetValue("N2", out _v))
-                _v = "16";
-            try
-            {
-                this.Initial_N2 = Int32.Parse(_v);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidPropertyException("N2", ex);
-            }
-
-            string _target;
-            if (!properties.TryGetValue("L3Target", out _target))
-                _target = "L3NULL";
-            m_l3target = m_runtime.LookupL3Channel(_target);
-            if (m_target == null)
-                throw new InvalidPropertyException("L3Target not found: " + _target);
-
-            m_dataLinkProviderProxy = new DataLinkProviderProxy(this);
 		}
 
         /// <summary>
-        /// Get or set the default target channel.
+        /// Get or set the target channel.
         /// </summary>
-        public virtual IL3Channel L3Target
-        {
-            get
-            {
-                return this.m_l3target;
+        public IL3Channel L3Target {
+            get {
+                return null;
             }
-            set
-            {
-                this.m_l3target = value;
+            set {
+                throw new Exception("Cannot set target of ProtocolChannel");
             }
+        }
+
+        /// <summary>
+        /// Send a primitive over the channel.
+        /// </summary>
+        /// <param name="message">The primitive to send.</param>
+        public void Send(DataLinkPrimitive message) {
+            throw new Exception("Cannot send primitive on ProtocolChannel");
         }
 
         /// <summary>
@@ -168,7 +107,6 @@ namespace OpenAX25_Protocol
         public override void Open()
         {
             base.Open();
-            m_dataLinkProviderProxy.Open();
         }
 
         /// <summary>
@@ -176,8 +114,15 @@ namespace OpenAX25_Protocol
         /// </summary>
         public override void Close()
         {
+            lock (this)
+            {
+                foreach (LocalEndpoint lep in m_localAddresses.Values)
+                {
+                    lep.Dispose();
+                } // end foreach //
+                m_localAddresses.Clear();
+            }
             base.Close();
-            m_dataLinkProviderProxy.Close();
         }
 
         /// <summary>
@@ -187,37 +132,42 @@ namespace OpenAX25_Protocol
         public override void Reset()
         {
             base.Reset();
-            m_dataLinkProviderProxy.Reset();
         }
 
         /// <summary>
-        /// Attach an endpoint with an address and request notifications to the
-        /// assosiated channel.
+        /// Attach a new local endpoint.
         /// </summary>
-        /// <param name="address">The address to register the channel for.</param>
-        /// <param name="channel">The channel that shall receive the notifications.</param>
-        /// <returns>LocalEndpoint for data access.</returns>
-        public ILocalEndpoint RegisterConnection(string address, IL3Channel channel)
+        /// <param name="address">Local address of the endpoint.</param>
+        /// <param name="properties">Endpoint properties, optional.</param>
+        /// <returns>Local endopoint object that can be used to create sessions.</returns>
+        public ILocalEndpoint RegisterLocalEndpoint(string address, IDictionary<string, string> properties)
         {
-            return m_dataLinkProviderProxy.RegisterConnection(address, channel);
+            lock (this)
+            {
+                L2Callsign cs = new L2Callsign(address);
+                string key = cs.ToString();
+                m_runtime.Log(
+                    LogLevel.INFO, m_name, "Register local endpoint \"" + key + "\"");
+                if (m_localAddresses.ContainsKey(key))
+                    throw new DuplicateNameException("Address: \"" + key + "\" already registered");
+                LocalEndpoint ep = new LocalEndpoint(this, cs, key, properties);
+                m_localAddresses.Add(key, ep);
+                return ep;
+            }
         }
 
         /// <summary>
-        /// Unattach an endpoint that where previously registeres fo a channel.
+        /// Unattach a local endpoint that where previously registered.
         /// </summary>
-        /// <param name="ep">The LocalEndpoint.</param>
-        public void UnregisterConnection(ILocalEndpoint ep)
+        /// <param name="endpoint">The endpoint to unregister.</param>
+        public void UnregisterLocalEndpoint(ILocalEndpoint endpoint)
         {
-            m_dataLinkProviderProxy.UnregisterConnection(ep);
-        }
-
-        /// <summary>
-        /// Send a Data Link primitive to the serving object.
-        /// </summary>
-        /// <param name="p">Data Link primitive to send.</param>
-        public virtual void Send(ILocalEndpoint sender, DataLinkPrimitive p)
-        {
-            m_dataLinkProviderProxy.Send(sender, p);
+            lock (this)
+            {
+                m_runtime.Log(
+                    LogLevel.INFO, m_name, "Unregister local endpoint \"" + endpoint.Address + "\"");
+                m_localAddresses.Remove(((LocalEndpoint)endpoint).m_key);
+            }
         }
 
     }

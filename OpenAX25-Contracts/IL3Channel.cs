@@ -38,8 +38,7 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Send a primitive over the channel.
         /// </summary>
-        /// <param name="sender">The sender of this primitive.</param>
         /// <param name="message">The primitive to send.</param>
-        void Send(ILocalEndpoint sender, DataLinkPrimitive message);
+        void Send(DataLinkPrimitive message);
     }
 }

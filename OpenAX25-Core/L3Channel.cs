@@ -21,12 +21,10 @@
 //
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using OpenAX25Contracts;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
+using OpenAX25Contracts;
 
 namespace OpenAX25Core
 {
@@ -54,10 +52,12 @@ namespace OpenAX25Core
 		/// </item>
 		/// </list>
 		/// </param>
+        /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
         /// <param name="suppressRegistration">
         /// If set no registration in the runtime is performed (For proxies).</param>
-        protected L3Channel(IDictionary<string, string> properties, bool suppressRegistration = false)
-            : base(properties, suppressRegistration)
+        protected L3Channel(IDictionary<string, string> properties, string alias = null,
+            bool suppressRegistration = true)
+            : base(properties, alias, suppressRegistration)
 		{
             string _target;
             if (!properties.TryGetValue("Target", out _target))
@@ -132,13 +132,12 @@ namespace OpenAX25Core
         /// <summary>
         /// Send a Data Link primitive to the serving object.
         /// </summary>
-        /// <param name="sender">Sender of the primitive</param>
         /// <param name="p">Data Link primitive to send</param>
-        public virtual void Send(ILocalEndpoint sender, DataLinkPrimitive p)
+        public virtual void Send(DataLinkPrimitive p)
         {
             lock (this)
             {
-                m_queue.Add(new Entry(sender,p));
+                m_queue.Add(p);
             }
         }
 
@@ -170,8 +169,7 @@ namespace OpenAX25Core
             {
                 try
                 {
-                    Entry e = m_queue.Take();
-                    Input(e.ep, e.p);
+                    Input(m_queue.Take());
                 }
                 catch (Exception e)
                 {
@@ -183,29 +181,17 @@ namespace OpenAX25Core
         /// <summary>
         /// Method to process input message. Must be overriden.
         /// </summary>
-        /// <param name="sender">The sender of the message.</param>
         /// <param name="p">The message to process.</param>
-        protected virtual void Input(ILocalEndpoint sender, DataLinkPrimitive p)
+        protected virtual void Input(DataLinkPrimitive p)
         {
             m_runtime.Log(LogLevel.WARNING, m_name, "Input Method not implemented");
             throw new Exception(
-                "L3Channel.Input(ILocalEndpoint sender, DataLinkPrimitive p) is not implemented in channel \""
+                "L3Channel.Input(DataLinkPrimitive p) is not implemented in channel \""
                 + m_name + "\"");
         }
 
-        private struct Entry
-        {
-            internal Entry(ILocalEndpoint _ep, DataLinkPrimitive _p)
-            {
-                ep = _ep;
-                p = _p;
-            }
-            internal readonly ILocalEndpoint ep;
-            internal readonly DataLinkPrimitive p;
-        }
-
-        private BlockingCollection<Entry> m_queue = new BlockingCollection<Entry>(
-            new ConcurrentQueue<Entry>());
+        private BlockingCollection<DataLinkPrimitive> m_queue = new BlockingCollection<DataLinkPrimitive>(
+            new ConcurrentQueue<DataLinkPrimitive>());
         private Thread m_thread = null;
     }
 }

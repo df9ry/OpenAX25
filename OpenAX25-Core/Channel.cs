@@ -61,17 +61,26 @@ namespace OpenAX25Core
 		/// </item>
 		/// </list>
 		/// </param>
+        /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
         /// <param name="suppressRegistration">
         /// If set no registration in the runtime is performed (For proxies).</param>
-		protected Channel(IDictionary<string, string> properties, bool suppressRegistration = false)
+		protected Channel(IDictionary<string, string> properties, string alias = null,
+            bool suppressRegistration = false)
 		{
             if (properties == null)
                 throw new ArgumentNullException("properties");
             this.m_properties = properties;
-            if (!properties.TryGetValue("Name", out this.m_name))
-                throw new MissingPropertyException("Name");
-            if (String.IsNullOrEmpty(this.m_name))
-                throw new InvalidPropertyException("Name");
+            if (String.IsNullOrEmpty(alias))
+            {
+                if (!properties.TryGetValue("Name", out this.m_name))
+                    throw new MissingPropertyException("Name");
+                if (String.IsNullOrEmpty(this.m_name))
+                    throw new InvalidPropertyException("Name");
+            }
+            else
+            {
+                this.m_name = alias;
+            }
             if (!suppressRegistration)
                 Runtime.Instance.RegisterChannel(this, m_name);
 		}

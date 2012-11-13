@@ -1,35 +1,29 @@
 ﻿using System;
 using OpenAX25Contracts;
 using OpenAX25Core;
+using System.Collections.Generic;
 
 namespace OpenAX25_Protocol
 {
-    internal class LocalEndpoint : ILocalEndpoint
+    internal class LocalEndpoint : ILocalEndpoint, IDisposable
     {
-        internal readonly Guid id;
-        internal readonly L2Callsign cs;
-        internal readonly string ky;
-        internal readonly IL3Channel ch;
-
+        internal readonly Guid m_id;
         internal readonly string m_name;
-        internal readonly DataLinkStateMachine m_machine;
+        internal readonly L2Callsign m_localCallsign;
+        internal readonly string m_key;
+        internal readonly ProtocolChannel m_protoChannel;
 
-        private readonly Runtime m_runtime;
+        private readonly IDictionary<Guid, Session> m_sessions = new Dictionary<Guid, Session>();
+        private readonly Runtime m_runtime = Runtime.Instance;
 
-        internal LocalEndpoint(L2Callsign callsign, string key, IL3Channel channel, AX25_Configuration config)
+        internal LocalEndpoint(ProtocolChannel channel, L2Callsign callsign, string key,
+            IDictionary<string,string> properties = null)
         {
-            id = Guid.NewGuid();
-            cs = callsign;
-            ky = key;
-            ch = channel;
-
-            m_name = channel.Name + ":" + ky;
-            m_runtime = Runtime.Instance;
-
-            m_machine = new DataLinkStateMachine(config);
-            m_machine.OnDataLinkOutputEvent += new OnDataLinkOutputEventHandler(OnDataLinkOutput);
-            m_machine.OnLinkMultiplexerOutputEvent += new OnLinkMultiplexerOutputEventHandler(OnLinkMultiplexerOutput);
-            m_machine.OnAX25OutputEvent += new OnAX25OutputEventHandler(OnAX25Output);
+            m_id = Guid.NewGuid();
+            m_name = channel.Name + ":" + key;
+            m_localCallsign = callsign;
+            m_key = key;
+            m_protoChannel = channel;
         }
 
         /// <summary>
@@ -39,38 +33,87 @@ namespace OpenAX25_Protocol
         {
             get
             {
-                return ky;
+                return m_key;
             }
         }
 
         /// <summary>
-        /// Return the endpoint m_id.
+        /// Return the endpoint ID.
         /// </summary>
         public Guid Id
         {
             get
             {
-                return id;
+                return m_id;
             }
         }
 
-        private void OnDataLinkOutput(DataLinkPrimitive p)
+        /// <summary>
+        /// Attach a new session.
+        /// </summary>
+        /// <param name="receiver">Receiver channel.</param>
+        /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
+        /// <returns>Transmitter channel.</returns>
+        public IL3Channel Bind(IL3Channel receiver, IDictionary<string, string> properties, string alias = null)
         {
-            if (m_runtime.LogLevel >= LogLevel.INFO)
-                m_runtime.Log(LogLevel.INFO, m_name, "Output " + p.DataLinkPrimitiveTypeName);
-            ch.Send(this, p);
+            Session session = new Session(this, receiver, properties, alias);
+            m_runtime.Log(LogLevel.INFO, m_name, "Bind " + receiver.Name + " to " + session.Name);
+            lock (m_sessions)
+            {
+                m_sessions.Add(session.m_id, session);
+            }
+            session.Open();
+            return session;
         }
 
-        private void OnLinkMultiplexerOutput(LinkMultiplexerPrimitive p)
+        /// <summary>
+        /// Unattach a session that where previously registered.
+        /// </summary>
+        /// <param name="session">
+        /// Tranmitter returned from previous call to Bind.
+        /// </param>
+        public void Unbind(IL3Channel session)
         {
-            if (m_runtime.LogLevel >= LogLevel.INFO)
-                m_runtime.Log(LogLevel.INFO, m_name, "Output " + p.LinkMultiplexerPrimitiveTypeName);
+            if (!(session is Session))
+                throw new ArgumentException("Invalid session");
+            m_runtime.Log(LogLevel.INFO, m_name, "Unind " + session.Name);
+            lock (m_sessions)
+            {
+                Session _session = m_sessions[((Session)session).m_id];
+                if (_session == null)
+                    throw new ArgumentException("Transmitter not registered: " + _session.m_id);
+                m_sessions.Remove(_session.m_id);
+                _session.Close();
+                _session.Dispose();
+            }
         }
 
-        private void OnAX25Output(AX25Frame f)
+        /// <summary>
+        /// Dispose this object, when it is not longer needed.
+        /// </summary>
+        public void Dispose()
         {
-            if (m_runtime.LogLevel >= LogLevel.INFO)
-                m_runtime.Log(LogLevel.INFO, m_name, "Output " + f.ToString());
+            lock (m_sessions)
+            {
+                foreach (Session session in m_sessions.Values)
+                {
+                    session.Close();
+                    session.Dispose();
+                } // end foreach //
+                m_sessions.Clear();
+            }
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
+
+        /// <summary>
+        /// Local dispose.
+        /// </summary>
+        /// <param name="intern">Set to <c>true</c> when calling from user code.</param>
+        protected virtual void Dispose(bool intern)
+        {
+        }
+
+
     }
 }
