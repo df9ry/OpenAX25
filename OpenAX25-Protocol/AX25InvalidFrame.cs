@@ -22,6 +22,7 @@ namespace OpenAX25_Protocol
                 return AX25Frame_T._INV;
             }
         }
+
         protected override void ToString(StringBuilder sb)
         {
             sb.Append("IFRM ");

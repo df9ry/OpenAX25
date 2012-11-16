@@ -90,15 +90,15 @@ namespace OpenAX25_Protocol
         protected override void OnForward(L2Frame frame)
         {
             L2Header header = new L2Header(frame.data);
-            // Get frame data:
-            int iData = 0;
-            for (; iData < frame.data.Length; ++iData)
-                if ((frame.data[iData] & 0x01) != 0x00)
-                    break;
-            byte[] data = new Byte[frame.data.Length - iData - 1];
-            Array.Copy(frame.data, iData + 1, data, 0, data.Length);
-            // Perform routing:
-            string targetCall = header.nextHop.ToString();
+            string target = header.destination.ToString();
+            LocalEndpoint ep = m_localAddresses[target];
+            if (ep == null)
+            {
+                m_runtime.Log(LogLevel.INFO, m_name,
+                    "Destination unknown: " + header.ToString());
+                return;
+            }
+            ep.OnForward(frame, header);
         }
 
         /// <summary>
@@ -168,6 +168,13 @@ namespace OpenAX25_Protocol
                     LogLevel.INFO, m_name, "Unregister local endpoint \"" + endpoint.Address + "\"");
                 m_localAddresses.Remove(((LocalEndpoint)endpoint).m_key);
             }
+        }
+
+        internal void Send(L2Frame frame)
+        {
+            if (m_target == null)
+                throw new Exception("Target is null in interface \"" + m_name + "\"");
+            m_target.ForwardFrame(frame);
         }
 
     }

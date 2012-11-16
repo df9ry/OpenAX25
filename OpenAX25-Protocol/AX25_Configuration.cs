@@ -15,6 +15,8 @@ namespace OpenAX25_Protocol
             this.Initial_SRT = 3000;
             this.Initial_N1 = 255;
             this.Initial_N2 = 10;
+            this.Initial_relaxed = false;
+            this.Initial_version = AX25Version.V2_0;
         }
 
         internal string name;
@@ -23,5 +25,7 @@ namespace OpenAX25_Protocol
         internal long Initial_SRT;
         internal long Initial_N1;
         internal long Initial_N2;
+        internal bool Initial_relaxed;
+        internal AX25Version Initial_version;
     }
 }

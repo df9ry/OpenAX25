@@ -127,16 +127,9 @@ namespace OpenAX25Router
     	/// <param name="frame">The frame to route.</param>
     	protected override void OnForward(L2Frame frame)
     	{
-    		L2Header header = new L2Header(frame.data);
-    		// Get frame data:
-    		int iData = 0;
-    		for (; iData < frame.data.Length; ++iData)
-    			if ((frame.data[iData] & 0x01) != 0x00)
-    				break;
-    		byte[] data = new Byte[frame.data.Length - iData - 1];
-    		Array.Copy(frame.data, iData+1, data, 0, data.Length);
     		// Perform routing:
-    		string targetCall = header.nextHop.ToString();
+            L2Header header = new L2Header(frame.data);
+            string targetCall = header.nextHop.ToString();
             IL2Channel targetChannel = null;
             IDictionary<string,string> targetProperties = null;
             foreach (Route r in m_routes)
@@ -148,10 +141,9 @@ namespace OpenAX25Router
                 }
             if (targetChannel != null)
             {
-                string text = String.Format("{0} [{1}-->{2}]: {3}", header.ToString(),
-                    header.nextHop.ToString(), targetChannel.Name,
-                    //L2HexConverter.ToHexString(data, true)
-                    AX25Frame.Create(data, header.isCommand, header.isResponse).ToString()
+                string text = String.Format("{0}({1}) [{2}-->{3}]: {4}", header.ToString(),
+                    frame.no, header.nextHop.ToString(), targetChannel.Name,
+                    HexConverter.ToHexString(frame.data, true)
                 );
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
                     m_runtime.Log(LogLevel.DEBUG, m_name, text);
@@ -162,8 +154,8 @@ namespace OpenAX25Router
             }
             else
             {
-                string text = String.Format("{0} [{1}--><NoRoute>]: {2}", header.ToString(),
-                    header.nextHop.ToString(), HexConverter.ToHexString(data, true));
+                string text = String.Format("{0}({1}) [{1}--><NoRoute>]: {2}", header.ToString(),
+                    frame.no, header.nextHop.ToString(), HexConverter.ToHexString(frame.data, true));
                 m_runtime.Log(LogLevel.INFO, m_name, text);
                 m_runtime.Monitor(text);
             }

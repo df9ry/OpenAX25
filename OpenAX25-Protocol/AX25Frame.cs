@@ -81,10 +81,16 @@ namespace OpenAX25_Protocol
         }
 
         public static AX25Frame Create(byte[] octets, bool cmd, bool rsp,
-            AX25Version version = AX25Version.V2_0)
+            AX25Version version)
         {
             AX25Modulo modulo = (version == AX25Version.V2_2) ?
                 AX25Modulo.MOD128 : AX25Modulo.MOD8;
+            return AX25Frame.Create(octets, cmd, rsp, version);
+        }
+
+        public static AX25Frame Create(byte[] octets, bool cmd, bool rsp,
+            AX25Modulo modulo)
+        {
             if (octets == null)
                 throw new ArgumentNullException("octets");
             if (octets.Length == 0)
@@ -106,6 +112,17 @@ namespace OpenAX25_Protocol
                 case AX25Modulo.MOD128: return 2;
                 default: throw new ArgumentOutOfRangeException("modulo");
             } // end switch //
+        }
+
+        /// <summary>
+        /// Get frame as byte array.
+        /// </summary>
+        public byte[] Octets
+        {
+            get
+            {
+                return m_octets;
+            }
         }
 
         public override string ToString()

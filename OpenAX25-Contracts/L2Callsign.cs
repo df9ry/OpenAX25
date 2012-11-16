@@ -134,6 +134,26 @@ namespace OpenAX25Contracts
             this.ssid = callsign.ssid;
             this.chBit = chBit;
         }
+
+        /// <summary>
+        /// Get binary presentation of this callsign.
+        /// </summary>
+        public byte[] Octets
+        {
+            get
+            {
+                byte[] octets = new byte[7];
+                int l = callsign.Length;
+                char[] c = callsign.ToCharArray();
+                int i = 0;
+                for (; i < l; ++i)
+                    octets[i] = (byte)(((int)c[i]) << 1);
+                for (; i < 6; ++i)
+                    octets[i] = 0x40;
+                octets[6] = (byte)((ssid << 1) | ((chBit) ? 0xE0 : 0x60));
+                return octets;
+            }
+        }
 		
 		/// <summary>
 		/// The callsign without(!) ssid.
@@ -149,6 +169,30 @@ namespace OpenAX25Contracts
 		/// The C - bit (Poll / Final) or the H - bit (Has been repeated).
 		/// </summary>
 		public readonly bool chBit;
+
+        /// <summary>
+        /// Test if this object equals this one.
+        /// </summary>
+        /// <param name="obj">The object to test</param>
+        /// <returns>If the object is the same as this one</returns>
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+            if (!(obj is L2Callsign))
+                return false;
+            L2Callsign cs = (L2Callsign)obj;
+            return (this.callsign.Equals(cs.callsign) && (this.ssid == cs.ssid));
+        }
+
+        /// <summary>
+        /// The hash code for this object.
+        /// </summary>
+        /// <returns>HashCode</returns>
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
 		
 		/// <summary>
 		/// Get string representation of this callsign.
@@ -158,6 +202,12 @@ namespace OpenAX25Contracts
 		{
 			return String.Format("{0}-{1}", this.callsign, this.ssid);
 		}
-		
+
+        /// <summary>
+        /// The empty callsign.
+        /// </summary>
+        public static L2Callsign CQ = new L2Callsign("CQ");
+
 	}
+
 }

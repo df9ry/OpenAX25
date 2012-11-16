@@ -25,21 +25,21 @@
 			<Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
 			<Property name="Mode">Client</Property>
 		</Channel>
-        <Channel name="TCP[9300]" class="TCPSERVER" target="PROTO" open="true">
+        <Channel name="FHNLINK" class="TCPSERVER" target="PROTO" open="true">
             <!-- Local listening port -->
             <Property name="Port">9300</Property>
             <!-- Local callsign -->
             <Property name="LocalAddr">DF9RY-1</Property>
             <!-- Remote callsign and path -->
-            <Property name="RemoteAddr">DB0FHN-10</Property>
+            <Property name="RemoteAddr">DB0FHN-1</Property>
             <!-- AX.25 version to use -->
-            <Property name="AX25Version">2.2</Property>
+            <Property name="AX25Version">1.0</Property>
             <!-- Initial smoothed round trip time -->
             <Property name="SRT">300</Property>
             <!-- Initial smoothed session timeout -->
             <Property name="SAT">1000</Property>
             <!-- Maximum number of bytes in frame -->
-            <Property name="N1">80</Property>
+            <Property name="N1">512</Property>
             <!-- Maximum number of retries -->
             <Property name="N2">4</Property>
         </Channel>

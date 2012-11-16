@@ -63,7 +63,7 @@ namespace OpenAX25Contracts
 		/// <param name="source">The source address.</param>
 		/// <param name="destination">The destination address.</param>
 		/// <param name="digis">The intermediate digis.</param>
-		public L2Header(L2Callsign source, L2Callsign destination, L2Callsign[] digis)
+        public L2Header(L2Callsign source, L2Callsign destination, L2Callsign[] digis)
 		{
 			this.source = source;
             this.isResponse = this.source.chBit;
@@ -131,7 +131,26 @@ namespace OpenAX25Contracts
 				return this.destination;
 			}
 		}
-		
+
+        /// <summary>
+        /// Get binary presentation of this header.
+        /// </summary>
+        public byte[] Octets
+        {
+            get
+            {
+                int nDigis = digis.Length;
+                byte[] octets = new byte[14 + ( nDigis * 7 )];
+                Array.Copy(destination.Octets, 0, octets, 0, 7);
+                Array.Copy(source.Octets, 0, octets, 7, 7);
+                int iOctet = 14;
+                for (int iDigi = 0; iDigi < nDigis; ++iDigi, iOctet += 7)
+                    Array.Copy(digis[iDigi].Octets, 0, octets, iOctet, 7);
+                octets[octets.Length - 1] |= 0x01; // SDLC end bit
+                return octets;
+            }
+        }
+
 		/// <summary>
 		/// Get a string representation of this header.
 		/// </summary>

@@ -1,4 +1,5 @@
 ﻿using OpenAX25Contracts;
+using System;
 
 namespace OpenAX25_Protocol
 {
@@ -29,7 +30,8 @@ namespace OpenAX25_Protocol
                 {
                     case AX25Modulo.MOD8: return ((m_octets[0] & 0x10) != 0x00);
                     case AX25Modulo.MOD128: return ((m_octets[1] & 0x01) != 0x10);
-                    default: return false;
+                    default:
+                        throw new Exception("Attempt to get PF with unknown modulo");
                 } // end switch //
             }
             set
@@ -49,7 +51,7 @@ namespace OpenAX25_Protocol
                             m_octets[1] = (byte)(m_octets[1] & 0xFE);
                         break;
                     default:
-                        break;
+                        throw new Exception("Attempt to sett PF with unknown modulo");
                 } // end switch //
             }
         }
@@ -62,7 +64,8 @@ namespace OpenAX25_Protocol
                 {
                     case AX25Modulo.MOD8: return (m_octets[0] & 0xE0) >> 5;
                     case AX25Modulo.MOD128: return (m_octets[1] & 0xFE) >> 1;
-                    default: return -1;
+                    default:
+                        throw new Exception("Attempt to get N_R with unknown modulo");
                 } // end switch //
             }
             set
@@ -78,7 +81,7 @@ namespace OpenAX25_Protocol
                         m_octets[1] |= (byte)((value & 0x7F) << 1);
                         break;
                     default:
-                        break;
+                        throw new Exception("Attempt to set N_R with unknown modulo");
                 } // end switch //
             }
         }

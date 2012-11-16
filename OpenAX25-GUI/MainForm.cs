@@ -145,6 +145,7 @@ namespace OpenAX25GUI
 			if (InvokeRequired)
 			{
 				this.Invoke(new Action<string>(AppendMonitor), new object[] {text});
+                return;
 			}
 			
 			string[] lines;

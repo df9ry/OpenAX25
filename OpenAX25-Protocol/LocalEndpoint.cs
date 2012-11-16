@@ -114,6 +114,28 @@ namespace OpenAX25_Protocol
         {
         }
 
-
+        internal void OnForward(L2Frame frame, L2Header header)
+        {
+            L2Callsign source = header.source;
+            L2Callsign[] digis = header.digis;
+            Session acceptor = null;
+            lock (m_sessions)
+            {
+                foreach (Session session in m_sessions.Values) {
+                    if (session.CanAccept(source, digis))
+                    {
+                        acceptor = session;
+                        break;
+                    }
+                } // end foreach //
+            } // end lock //
+            if (acceptor == null)
+            {
+                m_runtime.Log(LogLevel.INFO, m_name,
+                    "No session for: " + header.ToString());
+                return;
+            }
+            acceptor.OnForward(frame, header);
+        }
     }
 }
