@@ -759,91 +759,129 @@ namespace OpenAX25_Protocol
                     InvokeRetransmission();
                     break;
                 case AX25Frame_T.I:
-                    if (!((AX25_I)f).Command)
-                    {
-                        OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorS));
-                        break;
-                    }
-                    if (((AX25_I)f).InfoFieldLength > m_config.Initial_N1)
-                    {
-                        OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorO));
-                        ClearLayer3Initiated();
-                        m_state = State_T.AwaitingConnect;
-                        break;
-                    }
-                    if ((V_A > N_R) || (N_R > V_S))
-                    {
-                        NrErrorRecovery();
-                        m_state = State_T.AwaitingConnect;
-                        break;
-                    }
-                    CheckIFrameAcknowledged();
-                    if (OwnReceiverBusy)
-                    {
-                        IFrameStore[V_R] = null;
-                        if (((AX25_I)f).P)
-                        {
-                            F = true;
-                            N_R = V_R;
-                            OnAX25OutputEvent(new AX25_RNR(m_modulo, N_R, F));
-                            AcknowledgePending = false;;
-                        }
-                        break;
-                    }
-                    if (N_S != V_R)
-                    {
-                        if (!RejectException)
-                        {
-                            if (SREJEnabled)
-                            {
-                                IFrameStore[V_R] = (AX25_I)f;
-                                if (SRejectException > 0)
-                                {
-                                    N_R = N_S;
-                                    F = false;
-                                }
-                                else
-                                {
-                                    if (N_S > V_R + 1)
-                                    {
-                                        IFrameStore[V_R] = null;
-                                        RejectException = true;
-                                        SRejectException = 0;
-                                        F = (((AX25_I)f).P);
-                                        OnAX25OutputEvent(new AX25_REJ(m_modulo, N_R, F));
-                                        AcknowledgePending = false;;
-                                        break;
-                                    }
-                                    N_R = V_R;
-                                    F = true;
-                                    SRejectException += 1;
-                                    OnAX25OutputEvent(new AX25_SREJ(m_modulo, N_R, F));
-                                    AcknowledgePending = false;;
-                                    break;
-                                }
-                            }
-                            IFrameStore[V_R] = null;
-                            RejectException = true;
-                            SRejectException = 0;
-                            F = ((AX25_I)f).P;
-                            N_R = V_R;
-                            OnAX25OutputEvent(new AX25_REJ(m_modulo, N_R, F));
-                            AcknowledgePending = false;;
-                            break;
-                        }
-                        // RejectException
-                        IFrameStore[V_R] = null;
-                        if (!((AX25_I)f).P)
-                            break;
-                        F = true;
-                        N_R = V_R;
-                        OnAX25OutputEvent(new AX25_RR(m_modulo, N_R, F));
-                        AcknowledgePending = false;;
-                    }
-                    break;
+                    goto L3210;
                 default:
                     break;
             } // end switch //
+            return;
+
+        L3261:
+            NrErrorRecovery();
+            m_state = State_T.AwaitingConnect;
+            return;
+
+        L3210:
+            if (!((AX25_I)f).Command)
+                goto L3291;
+            if (((AX25_I)f).InfoFieldLength > m_config.Initial_N1)
+                goto L3281;
+            if ((V_A > N_R) || (N_R > V_S))
+                goto L3261;
+            CheckIFrameAcknowledged();
+            goto L3300;
+
+        L3281:
+            OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorO));
+            EstablishDataLink(m_version);
+            Layer3Initiated = false;
+            m_state = State_T.AwaitingConnect;
+            return;
+
+        L3291:
+            OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorS));
+            /*DiscardIframe()*/
+            m_state = State_T.Connected;
+            return;
+
+        L3300:
+            if (OwnReceiverBusy)
+                goto L3361;
+            if (N_S != V_R)
+                goto L3321;
+            V_R = V_R + 1;
+            RejectException = false;
+            if (SRejectException > 0)
+                --SRejectException;
+            OnDataLinkOutputEvent(new DL_DATA_Indication(((AX25_I)f).I));
+
+        L3301:
+            if (IFrameStore[V_R] == null)
+                goto L3311;
+            f = IFrameStore[V_R];
+            OnDataLinkOutputEvent(new DL_DATA_Indication(((AX25_I)f).I));
+            V_R = V_R + 1;
+            goto L3301;
+
+        L3311:
+            if (P)
+                goto L3322;
+            if (AcknowledgePending)
+                goto L3323;
+            OnLinkMultiplexerOutputEvent(new LM_SEIZE_Request(m_multiplexer));
+            AcknowledgePending = true;
+            goto L3323;
+
+        L3321:
+            if (!RejectException)
+                goto L3331;
+            /*DiscardContentsOfIFrame();*/
+            if (!P)
+                goto L3323;
+
+        L3322:
+            F = true;
+            OnAX25OutputEvent(new AX25_RR(m_modulo, N_R, F));
+            AcknowledgePending = false;
+
+        L3323:
+            m_state = State_T.Connected;
+            return;
+
+        L3331:
+            if (SREJEnabled)
+                goto L3341;
+
+        L3332:
+            /*DiscardContentsOfIFrame();*/
+            RejectException = true;
+            F = P;
+            OnAX25OutputEvent(new AX25_REJ(m_modulo, N_R, F));
+
+        L3333:
+            AcknowledgePending = false;
+            goto L3323;
+
+        L3341:
+            IFrameStore[N_R] = (AX25_I)f;
+            if (SRejectException > 0)
+                goto L3351;
+            if (N_S > V_R + 1)
+                goto L3332;
+            N_R = V_R;
+            F = true;
+
+        L3342:
+            ++SRejectException;
+            OnAX25OutputEvent(new AX25_SREJ(m_modulo, N_R, F));
+            goto L3333;
+
+        L3351:
+            N_R = N_S;
+            F = false;
+            goto L3342;
+
+        L3361:
+            /*DiscardContentsOfIFrame();*/
+            if (!P)
+                goto L3362;
+            F = true;
+            OnAX25OutputEvent(new AX25_RNR(m_modulo, N_R, F));
+            AcknowledgePending = false;
+
+        L3362:
+            m_state = State_T.Connected;
+            return;
+
         }
 
         private void TimerRecovery(DataLinkPrimitive p)
