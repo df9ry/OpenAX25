@@ -64,7 +64,7 @@ namespace OpenAX25_TCPServer
 		///   <item><term>Name</term><description>Name of the interface [mandatory]</description></item>
         ///   <item><term>LocalAddr</term><description>Local link address [mandatory]</description></item>
         ///   <item><term>RemoteAddr</term><description>Remote link address [mandatory]</description></item>
-        ///   <item><term>AX25Version</term><description>AX.25 version to use (1.0|2.0|2.2) [default: 2.0]</description></item>
+        ///   <item><term>AX25Version</term><description>AX.25 version to use (2.0|2.2) [default: 2.0]</description></item>
         ///   <item><term>Target</term><description>Where to route packages to [Default: PROTO]</description></item>
 		///   <item><term>Port</term><description>Port [default: 9300]</description></item>
         ///   <item><term>Timer</term><description>Send timer time [ms] [default: disabled]</description></item>
@@ -105,12 +105,12 @@ namespace OpenAX25_TCPServer
                 _v = "2.0";
             try
             {
-                if ("2.0".Equals(_v) || "1.0".Equals(_v))
+                if ("2.0".Equals(_v))
                     m_version = AX25Version.V2_0;
                 else if ("2.2".Equals(_v))
                     m_version = AX25Version.V2_2;
                 else
-                    throw new ArgumentOutOfRangeException("1.0|2.0|2.2");
+                    throw new ArgumentOutOfRangeException("2.0|2.2");
             }
             catch (Exception ex)
             {
@@ -127,7 +127,7 @@ namespace OpenAX25_TCPServer
             }
             catch (Exception ex)
             {
-                throw new InvalidPropertyException("Port: " + _v, ex);
+                throw new InvalidPropertyException("AX25Version: " + _v, ex);
             }
 
             if (!properties.TryGetValue("Timer", out _v))
@@ -454,7 +454,8 @@ namespace OpenAX25_TCPServer
         /// </summary>
         /// <param name="sender">The sender of the message.</param>
         /// <param name="p">The message to process.</param>
-        protected override void Input(DataLinkPrimitive p)
+        /// <param name="expedited">Send expedited if set.</param>
+        protected override void Input(DataLinkPrimitive p, bool expedited = false)
         {
             try
             {

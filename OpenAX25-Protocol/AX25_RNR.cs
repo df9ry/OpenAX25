@@ -33,9 +33,13 @@ namespace OpenAX25_Protocol
             sb.Append("RNR(R=");
             sb.Append(N_R);
             if (PF)
-                sb.Append(",F");
-            else
-                sb.Append(",P");
+            {
+                sb.Append(',');
+                if (Command)
+                    sb.Append('P');
+                else
+                    sb.Append('F');
+            }
             sb.Append(')');
         }
     }

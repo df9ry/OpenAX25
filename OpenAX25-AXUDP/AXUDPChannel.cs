@@ -153,7 +153,6 @@ namespace OpenAX25AXUDP
 					}
 					break;
 				} // end switch //
-				m_udpClient.Send(octets, octets.Length);
 			} catch (Exception ex) {
 				this.OnForwardError("Error transmitting to UDP port", ex);
 			}

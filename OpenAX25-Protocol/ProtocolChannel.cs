@@ -68,7 +68,9 @@ namespace OpenAX25_Protocol
         /// Send a primitive over the channel.
         /// </summary>
         /// <param name="message">The primitive to send.</param>
-        public void Send(DataLinkPrimitive message) {
+        /// <param name="expedited">Send express if set.</param>
+        public void Send(DataLinkPrimitive message, bool expedited)
+        {
             throw new Exception("Cannot send primitive on ProtocolChannel");
         }
 

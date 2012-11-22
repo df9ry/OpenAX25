@@ -34,7 +34,12 @@ namespace OpenAX25_Protocol
         {
             sb.Append("XID");
             if (PF)
-                sb.Append("(P/F)");
+            {
+                if (Command)
+                    sb.Append("(P)");
+                else
+                    sb.Append("(F)");
+            }
             sb.Append(' ');
             sb.Append(HexConverter.ToHexString(I, true));
         }

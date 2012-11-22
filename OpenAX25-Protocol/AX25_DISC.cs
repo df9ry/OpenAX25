@@ -31,7 +31,12 @@ namespace OpenAX25_Protocol
         {
             sb.Append("DISC");
             if (PF)
-                sb.Append("(P)");
+            {
+                if (Command)
+                    sb.Append("(P)");
+                else
+                    sb.Append("(F)");
+            }
         }
 
     }

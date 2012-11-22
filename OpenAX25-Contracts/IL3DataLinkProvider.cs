@@ -26,7 +26,7 @@ namespace OpenAX25Contracts
     /// <summary>
     /// A Layer 3 channel that provides a Data Link connection.
     /// </summary>
-    public interface IL3DataLinkProvider : IL2Channel
+    public interface IL3DataLinkProvider : IChannel
     {
         /// <summary>
         /// Attach a new local endpoint.

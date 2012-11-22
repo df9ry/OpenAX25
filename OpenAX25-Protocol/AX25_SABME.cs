@@ -32,7 +32,12 @@ namespace OpenAX25_Protocol
         {
             sb.Append("SABME");
             if (PF)
-                sb.Append("(P)");
+            {
+                if (Command)
+                    sb.Append("(P)");
+                else
+                    sb.Append("(F)");
+            }
         }
     }
 }

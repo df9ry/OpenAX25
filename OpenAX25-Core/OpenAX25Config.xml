@@ -5,7 +5,9 @@
 		<Assembly file="OpenAX25-KISS.dll" />
 		<Assembly file="OpenAX25-AXUDP.dll" />
         <Assembly file="OpenAX25-Protocol.dll" />
+        <Assembly file="OpenAX25-Vanilla.dll" />
         <Assembly file="OpenAX25-TCPServer.dll" />
+        <Assembly file="OpenAX25-Console.dll" />
     </Assemblies>
 	<Channels>
 		<Channel name="Router" class="ROUTER" open="true">
@@ -25,23 +27,23 @@
 			<Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
 			<Property name="Mode">Client</Property>
 		</Channel>
-        <Channel name="FHNLINK" class="TCPSERVER" target="PROTO" open="true">
-            <!-- Local listening port -->
+        <Channel name="VANILLA" class="VANILLA" target="PROTO" open="true">
+        </Channel>
+        <!--
+        <Channel name="FHNLINK" class="TCPSERVER" target="VANILLA" open="true">
             <Property name="Port">9300</Property>
-            <!-- Local callsign -->
             <Property name="LocalAddr">DF9RY-1</Property>
-            <!-- Remote callsign and path -->
             <Property name="RemoteAddr">DB0FHN-1</Property>
-            <!-- AX.25 version to use -->
-            <Property name="AX25Version">1.0</Property>
-            <!-- Initial smoothed round trip time -->
+            <Property name="AX25Version">2.0</Property>
             <Property name="SRT">300</Property>
-            <!-- Initial smoothed session timeout -->
-            <Property name="SAT">1000</Property>
-            <!-- Maximum number of bytes in frame -->
+            <Property name="SAT">10000</Property>
             <Property name="N1">512</Property>
-            <!-- Maximum number of retries -->
             <Property name="N2">4</Property>
+        </Channel>
+        -->
+        <Channel name="CONSOLE" class="CONSOLE" target="VANILLA" open="true">
+            <Property name="Port">9000</Property>
+            <Property name="LocalAddr">DF9RY-1</Property>
         </Channel>
     </Channels>
 </OpenAX25Config>

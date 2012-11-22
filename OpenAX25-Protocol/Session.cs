@@ -19,7 +19,6 @@ namespace OpenAX25_Protocol
         private L2Callsign m_targetCall;
         private L2Callsign[] m_defaultDigis;
         private L2Callsign[] m_digis;
-        private byte[] m_lastFrame = new byte[0];
 
         /** Management parameters */
         //private readonly int NM201; // Maximum number of retries of the XID command.
@@ -33,7 +32,7 @@ namespace OpenAX25_Protocol
         /// <list type="bullet">
         ///   <listheader><term>Property name</term><description>Description</description></listheader>
         ///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
-        ///   <item><term>AX25Version</term><description>AX.25 Version to use (1.0|2.0|2.2) [Default: 2.0]</description></item>
+        ///   <item><term>AX25Version</term><description>AX.25 Version to use (2.0|2.2) [Default: 2.0]</description></item>
         ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
         ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
         ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
@@ -62,25 +61,12 @@ namespace OpenAX25_Protocol
                 _v = "2.0";
             try
             {
-                if ("1.0".Equals(_v))
-                {
-                    m_config.Initial_relaxed = true;
+                if ("2.0".Equals(_v))
                     m_config.Initial_version = AX25Version.V2_0;
-                }
-                else if ("2.0".Equals(_v))
-                {
-                    m_config.Initial_relaxed = false;
-                    m_config.Initial_version = AX25Version.V2_2;
-                }
                 else if ("2.2".Equals(_v))
-                {
-                    m_config.Initial_relaxed = false;
                     m_config.Initial_version = AX25Version.V2_2;
-                }
                 else
-                {
-                    throw new ArgumentOutOfRangeException("1.0|2.0|2.2");
-                }
+                    throw new ArgumentOutOfRangeException("2.0|2.2");
             }
             catch (Exception ex)
             {
@@ -163,7 +149,14 @@ namespace OpenAX25_Protocol
             m_machine.OnDataLinkOutputEvent += new OnDataLinkOutputEventHandler(OnDataLinkOutput);
             m_machine.OnLinkMultiplexerOutputEvent += new OnLinkMultiplexerOutputEventHandler(OnLinkMultiplexerOutput);
             m_machine.OnAX25OutputEvent += new OnAX25OutputEventHandler(OnAX25Output);
+            m_machine.OnAX25OutputExpeditedEvent += new OnAX25OutputEventHandler(OnAX25ExpeditedOutput);
         
+        }
+
+        public override void Close()
+        {
+            m_machine.Input(new DL_DISCONNECT_Request());
+            base.Close();
         }
 
         internal bool CanAccept(L2Callsign source, L2Callsign[] digis)
@@ -185,7 +178,7 @@ namespace OpenAX25_Protocol
             return true;
         }
 
-        protected override void Input(DataLinkPrimitive p)
+        protected override void Input(DataLinkPrimitive p, bool expedited)
         {
             if (p.DataLinkPrimitiveType == DataLinkPrimitive_T.DL_CONNECT_Request_T)
             {
@@ -259,14 +252,25 @@ namespace OpenAX25_Protocol
                 m_runtime.Log(LogLevel.INFO, m_name, "Output " + p.LinkMultiplexerPrimitiveTypeName);
         }
 
+        private void OnAX25ExpeditedOutput(AX25Frame f)
+        {
+            _OnAX25Output(f, true);
+        }
+
         private void OnAX25Output(AX25Frame f)
+        {
+            _OnAX25Output(f, false);
+        }
+
+        private void _OnAX25Output(AX25Frame f, bool expedited)
         {
             byte[] payload = f.Octets;
             L2Callsign sourceCall = new L2Callsign(m_localEndpoint.m_localCallsign, f.Response);
             L2Callsign targetCall = new L2Callsign(m_targetCall, f.Command);
 
-            string msg = String.Format("*TX {0} {1}->{2}{3} [{4}]", m_name,
-                sourceCall.ToString(), targetCall.ToString(), DigisToString(m_digis), f.ToString());
+            string msg = String.Format("*TX [{5:HH:mm:ss.fff}] {0} {1}->{2}{3} [{4}]", m_name,
+                sourceCall.ToString(), targetCall.ToString(), DigisToString(m_digis), f.ToString(),
+                DateTime.UtcNow);
             m_runtime.Monitor(msg);
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
                 m_runtime.Log(LogLevel.DEBUG, m_name, msg);
@@ -280,7 +284,7 @@ namespace OpenAX25_Protocol
             Array.Copy(header, 0, _frame, 0, lHeader);
             Array.Copy(payload, 0, _frame, lHeader, lPayload);
             L2Frame frame = new L2Frame(m_runtime.NewFrameNo(), false, _frame);
-            m_localEndpoint.m_protoChannel.Send(frame);
+            m_localEndpoint.m_protoChannel.Send(frame/* TODO , expedited*/);
         }
 
         internal void OnForward(L2Frame f, L2Header header)
@@ -289,14 +293,6 @@ namespace OpenAX25_Protocol
             m_digis = ReverseDigis(header.digis);
 
             byte[] _data = f.data;
-            if (IsDoublett(_data))
-            {
-                if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                    m_runtime.Log(LogLevel.DEBUG, m_name,
-                        "Purged dublett frame: " + HexConverter.ToHexString(_data, true));
-                return;
-            }
-            m_lastFrame = _data;
             int l_data = _data.Length;
             int i_payload = 14 + ( m_digis.Length * 7 );
             int l_payload = l_data - i_payload;
@@ -306,27 +302,14 @@ namespace OpenAX25_Protocol
             AX25Frame frame = AX25Frame.Create(
                 payload, header.isCommand, header.isResponse, m_machine.m_modulo);
 
-            string msg = String.Format("*RX {0} {1}<-{2}{3} [{4}]", m_name,
+            string msg = String.Format("*RX [{5:HH:mm:ss.fff}] {0} {1}<-{2}{3} [{4}]", m_name,
                 m_localEndpoint.m_localCallsign.ToString(), m_targetCall.ToString(),
-                DigisToString(m_digis), frame.ToString());
+                DigisToString(m_digis), frame.ToString(), DateTime.UtcNow);
             m_runtime.Monitor(msg);
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
                 m_runtime.Log(LogLevel.DEBUG, m_name, msg);
 
             m_machine.Input(frame);
-        }
-
-        private bool IsDoublett(byte[] frame)
-        {
-            int l = frame.Length;
-            if (l != m_lastFrame.Length)
-                return false;
-            for (int i = 0; i < l; ++i)
-            {
-                if (frame[i] != m_lastFrame[i])
-                    return false;
-            } // end for //
-            return true;
         }
 
         private static string DigisToString(L2Callsign[] digis)

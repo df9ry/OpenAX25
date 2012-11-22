@@ -133,11 +133,12 @@ namespace OpenAX25Core
         /// Send a Data Link primitive to the serving object.
         /// </summary>
         /// <param name="p">Data Link primitive to send</param>
-        public virtual void Send(DataLinkPrimitive p)
+        /// <param name="expedited">Send expedited if set.</param>
+        public virtual void Send(DataLinkPrimitive p, bool expedited = true)
         {
             lock (this)
             {
-                m_queue.Add(p);
+                m_queue.Add(new Entry(p, expedited));
             }
         }
 
@@ -169,7 +170,8 @@ namespace OpenAX25Core
             {
                 try
                 {
-                    Input(m_queue.Take());
+                    Entry e = m_queue.Take();
+                    Input(e.p, e.expedited);
                 }
                 catch (Exception e)
                 {
@@ -182,16 +184,29 @@ namespace OpenAX25Core
         /// Method to process input message. Must be overriden.
         /// </summary>
         /// <param name="p">The message to process.</param>
-        protected virtual void Input(DataLinkPrimitive p)
+        /// <param name="expedited">Send express if set.</param>
+        protected virtual void Input(DataLinkPrimitive p, bool expedited)
         {
             m_runtime.Log(LogLevel.WARNING, m_name, "Input Method not implemented");
             throw new Exception(
-                "L3Channel.Input(DataLinkPrimitive p) is not implemented in channel \""
+                "L3Channel.Input(DataLinkPrimitive p, bool expedited) is not implemented in channel \""
                 + m_name + "\"");
         }
 
-        private BlockingCollection<DataLinkPrimitive> m_queue = new BlockingCollection<DataLinkPrimitive>(
-            new ConcurrentQueue<DataLinkPrimitive>());
+        private struct Entry
+        {
+            internal readonly DataLinkPrimitive p;
+            internal readonly bool expedited;
+
+            internal Entry(DataLinkPrimitive _p, bool _expedited)
+            {
+                p = _p;
+                expedited = _expedited;
+            }
+        }
+
+        private BlockingCollection<Entry> m_queue = new BlockingCollection<Entry>(
+            new ConcurrentQueue<Entry>());
         private Thread m_thread = null;
     }
 }

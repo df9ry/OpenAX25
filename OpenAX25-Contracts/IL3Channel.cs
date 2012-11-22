@@ -39,6 +39,7 @@ namespace OpenAX25Contracts
         /// Send a primitive over the channel.
         /// </summary>
         /// <param name="message">The primitive to send.</param>
-        void Send(DataLinkPrimitive message);
+        /// <param name="expedited">Send expedited if set.</param>
+        void Send(DataLinkPrimitive message, bool expedited = false);
     }
 }

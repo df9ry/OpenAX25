@@ -79,7 +79,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Send message over the channel.
         /// </summary>
-        public void Send(DataLinkPrimitive _) {}
+        public void Send(DataLinkPrimitive _1, bool _2) {}
 
     }
 }

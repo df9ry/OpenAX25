@@ -141,23 +141,26 @@ namespace OpenAX25Router
                 }
             if (targetChannel != null)
             {
-                string text = String.Format("{0}({1}) [{2}-->{3}]: {4}", header.ToString(),
-                    frame.no, header.nextHop.ToString(), targetChannel.Name,
-                    HexConverter.ToHexString(frame.data, true)
-                );
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                {
+                    string text = String.Format("# {0}({1}) [{2}-->{3}]: {4}", header.ToString(),
+                        frame.no, header.nextHop.ToString(), targetChannel.Name,
+                        HexConverter.ToHexString(frame.data, true)
+                    );
                     m_runtime.Log(LogLevel.DEBUG, m_name, text);
-                m_runtime.Monitor(text);
+                }
                 L2Frame new_frame = new L2Frame(m_runtime.NewFrameNo(), frame.isPriorityFrame,
                                 frame.data, targetProperties);
                 targetChannel.ForwardFrame(new_frame);
             }
             else
             {
-                string text = String.Format("{0}({1}) [{1}--><NoRoute>]: {2}", header.ToString(),
-                    frame.no, header.nextHop.ToString(), HexConverter.ToHexString(frame.data, true));
-                m_runtime.Log(LogLevel.INFO, m_name, text);
-                m_runtime.Monitor(text);
+                if (m_runtime.LogLevel >= LogLevel.WARNING)
+                {
+                    string text = String.Format("# {0}({1}) [{1}--><NoRoute>]: {2}", header.ToString(),
+                        frame.no, header.nextHop.ToString(), HexConverter.ToHexString(frame.data, true));
+                    m_runtime.Log(LogLevel.WARNING, m_name, text);
+                }
             }
     	}
 

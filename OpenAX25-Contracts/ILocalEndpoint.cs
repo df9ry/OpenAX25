@@ -41,10 +41,6 @@ namespace OpenAX25Contracts
         /// <list type="bullet">
         ///   <listheader><term>Property name</term><description>Description</description></listheader>
         ///   <item><term>Name</term><description>Name of the channel [Mandatory]</description></item>
-        ///   <item><term>SRT</term><description>Initial smoothed round trip time in ms [Default: 3000]</description></item>
-        ///   <item><term>SAT</term><description>Ínitial smoothed activity timer in ms [Default: 10000]</description></item>
-        ///   <item><term>N1</term><description>Ínitial maximum number of octets in the information field of a frame [Default: 255]</description></item>
-        ///   <item><term>N2</term><description>Ínitial maximum number of retires permitted [Default: 16]</description></item>
         /// </list>
         /// </param>
         /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
