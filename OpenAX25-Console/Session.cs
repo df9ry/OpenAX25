@@ -22,6 +22,10 @@ namespace OpenAX25_Console
         private volatile bool m_active = false;
         private Object m_stateLock = new Object();
         private IL3Channel m_tx = null;
+        private bool m_control = false;
+        private bool m_suppress_go_ahead = false;
+        private bool m_transmit_binary = false;
+        private bool m_receive_binary = false;
 
         internal Session(ConsoleChannel channel, Socket socket)
             : base(channel.Properties, null, true)
@@ -55,6 +59,18 @@ namespace OpenAX25_Console
                     if (m_state != SessionState.CONNECTED)
                         return;
                     ConsoleChannel.ContinueRead(this);
+
+                    byte[] telnetNegotiation = new byte[] {
+                        255, 254,  1, // DON'T LOCAL_ECHO
+                        255, 253, 34, // DO LINEMODE
+                        255, 251,  0, // WILL TRANSMIT BINARY
+                        255, 253,  0, // DO TRANSMIT BINARY
+                    };
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DON'T 0");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO 34");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WILL 0");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO 0");
+                    ConsoleChannel.SendToLocal(this, telnetNegotiation, telnetNegotiation.Length);
                 }
             }
             catch (Exception e)
@@ -89,7 +105,7 @@ namespace OpenAX25_Console
             }
         }
 
-        internal bool Receive(int nReceived)
+        internal bool ReceiveFromLocal(int nReceived)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
             {
@@ -102,43 +118,142 @@ namespace OpenAX25_Console
             {
                 lock (m_buffer2)
                 {
-                    // In text mode look for CR of NL. If found, force output later.
-                    bool forceOutput = false;
-                    for (int i = 0; (i < nReceived) && !forceOutput; ++i)
-                        switch (m_buffer1[i]) { case 0x0d: case 0x0a: forceOutput = true; break; default: break; }
+                    int state = 0, i = 0;
 
-                    // Test if received data will fit into buffer2:
-                    int new_buffer2size = m_buffer2size + nReceived;
+                    while (i < nReceived)
+                    {
+                        byte c = m_buffer1[i++];
 
-                    // If it fits, simply copy data to buffer2:
-                    if (new_buffer2size <= m_channel.m_buffer2alloc)
-                    {
-                        Array.Copy(m_buffer1, 0, m_buffer2, m_buffer2size, nReceived);
-                        m_buffer2size = new_buffer2size;
-                    }
-                    // If it not fits at a whole, do it chunk by chunk:
-                    else
-                    {
-                        int iReceived = 0;
-                        while (iReceived < nReceived)
+                        switch (state)
                         {
-                            int nToCopy = Math.Min(m_channel.m_buffer2alloc - m_buffer2size, nReceived - iReceived);
-                            Array.Copy(m_buffer1, iReceived, m_buffer2, m_buffer2size, nToCopy);
-                            m_buffer2size += nToCopy;
-                            Send(m_buffer2, m_buffer2size);
+                            case 0: // Normal input
+                                switch (c)
+                                {
+                                    case 0x00: // Ignore
+                                        break;
+                                    case 0x0D: // CR
+                                        if ((m_buffer2size + 2) >= m_channel.m_buffer2alloc)
+                                        {
+                                            --i;
+                                        }
+                                        else
+                                        {
+                                            m_buffer2[m_buffer2size++] = 0x0D;
+                                            m_buffer2[m_buffer2size++] = 0x0A;
+                                        }
+                                        goto TX;
+                                    case 0x0A: // LF
+                                        break;
+                                    case 0xFF: // IAC:
+                                        state = 1;
+                                        break;
+                                    default:
+                                        if ((m_buffer2size + 1) >= m_channel.m_buffer2alloc)
+                                        {
+                                            --i;
+                                            goto TX;
+                                        }
+                                        else
+                                        {
+                                            m_buffer2[m_buffer2size++] = c;
+                                            break;
+                                        }
+                                } // end switch state 0 //
+                                break;
+                            case 1: // IAC was seen
+                                switch (c)
+                                {
+                                    case 247: // Erase character
+                                        if (m_buffer2size > 0)
+                                            --m_buffer2size;
+                                        state = 0;
+                                        break;
+                                    case 248: // Erase line
+                                        m_buffer2size = 0;
+                                        state = 0;
+                                        break;
+                                    case 249: // Go ahead
+                                        state = 0;
+                                        if (m_suppress_go_ahead)
+                                            break;
+                                        else
+                                            goto TX;
+                                    case 250: // SB
+                                        state = 6;
+                                        break;
+                                    case 251: // WILL
+                                        state = 2;
+                                        break;
+                                    case 252: // WON'T
+                                        state = 3;
+                                        break;
+                                    case 253: // DO
+                                        state = 4;
+                                        break;
+                                    case 254: // DON'T
+                                        state = 5;
+                                        break;
+                                    case 255: // IAC ESC
+                                        if ((m_buffer2size + 1) >= m_channel.m_buffer2alloc)
+                                        {
+                                            --i;
+                                            goto TX;
+                                        }
+                                        else
+                                        {
+                                            m_buffer2[m_buffer2size++] = 0xFF;
+                                            break;
+                                        }
+                                    default:
+                                        break;
+                                } // end switch state 1 //
+                                break;
+                            case 2: // WILL
+                                WILL(c);
+                                state = 0;
+                                break;
+                            case 3: // WOUN'T
+                                WOUNT(c);
+                                state = 0;
+                                break;
+                            case 4: // DO
+                                DO(c);
+                                state = 0;
+                                break;
+                            case 5: // DON'T
+                                DONT(c);
+                                state = 0;
+                                break;
+                            case 6: // Telnet subnegotiation
+                                switch (c)
+                                {
+                                    case 255: // IAC
+                                        state = 7;
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                break;
+                            case 7: // Telnet subnegotiation IAC
+                                switch (c)
+                                {
+                                    case 240: // SE
+                                        state = 0;
+                                        break;
+                                    default:
+                                        state = 6;
+                                        break;
+                                }
+                                break;
+                        } // end switch state //
+                        continue;
+                    TX:
+                        if (m_buffer2size > 0)
+                        {
+                            SendToRemote(m_buffer2, m_buffer2size);
                             m_buffer2size = 0;
-                            iReceived += nToCopy;
-                        } // end while //
-                    }
-
-                    // If output was forced and there is data to output, output it now:
-                    if (forceOutput && (m_buffer2size > 0))
-                    {
-                        Send(m_buffer2, m_buffer2size);
-                        m_buffer2size = 0;
-                    }
-
-                    // Allow more input from the channel:
+                        }
+                    } // end while //
                     ConsoleChannel.ContinueRead(this);
                 } // end lock //
                 return true;
@@ -149,6 +264,115 @@ namespace OpenAX25_Console
                 m_buffer2size = 0;
                 return false;
             }
+        }
+
+        private void DONT(byte c) // I am request to don't do something
+        {
+            m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet DON'T " + (int)c);
+            switch (c)
+            {
+                case 0: // TRANSMIT_BINARY
+                    if (m_transmit_binary)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WON'T " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 252, c }, 0);
+                        m_transmit_binary = false;
+                    }
+                    break;
+                case 3: // SUPPRESS_GO_AHEAD
+                    if (m_suppress_go_ahead)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WON'T " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 252, c }, 3);
+                        m_suppress_go_ahead = false;
+                    }
+                    break;
+                case 34: // LINEMODE
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WON'T " + (int)c);
+                    ConsoleChannel.SendToLocal(this, new byte[] { 255, 252, c }, 3);
+                    break;
+                default:
+                    break;
+            } // end switch //
+        }
+
+        private void DO(byte c) // I am requested to do something
+        {
+            m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet DO " + (int)c);
+            switch (c)
+            {
+                case 0: // TRANSMIT_BINARY
+                    if (!m_transmit_binary)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WILL " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 251, c }, 0);
+                        m_suppress_go_ahead = true;
+                    }
+                    break;
+                case 1: // LOCAL_ECHO
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WON'T " + (int)c);
+                    ConsoleChannel.SendToLocal(this, new byte[] { 255, 252, c }, 3);
+                    break;
+                case 3: // SUPPRESS_GO_AHEAD
+                    if (!m_suppress_go_ahead)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WILL " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 251, c }, 3);
+                        m_suppress_go_ahead = true;
+                    }
+                    break;
+                case 34: // LINEMODE
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit LINEMODE setup");
+                    ConsoleChannel.SendToLocal(this,
+                        new byte[] { 255, 250, 34, 1, 0x01, 255, 240 }, 7);
+                    break;
+                default:
+                    break;
+            } // end switch //
+        }
+
+        private void WOUNT(byte c) // The peer do not want to do something
+        {
+            m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet WON'T " + (int)c);
+            switch (c)
+            {
+                case 0: // TRANSMIT_BINARY
+                    if (m_receive_binary)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DON'T " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 254, c }, 3);
+                        m_receive_binary = false;
+                    }
+                    break;
+                case 34: // LINEMODE
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DON'T " + (int)c);
+                    ConsoleChannel.SendToLocal(this, new byte[] { 255, 254, c }, 3);
+                    break;
+                default:
+                    break;
+            } // end switch //
+        }
+
+        private void WILL(byte c) // The peer do want to do something
+        {
+            m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet WILL " + (int)c);
+            switch (c)
+            {
+                case 0: // TRANSMIT_BINARY
+                    if (!m_receive_binary)
+                    {
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO " + (int)c);
+                        ConsoleChannel.SendToLocal(this, new byte[] { 255, 253, c }, 3);
+                        m_receive_binary = true;
+                    }
+                    break;
+                case 1: // LOCAL_ECHO
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DON'T " + (int)c);
+                    ConsoleChannel.SendToLocal(this, new byte[] { 255, 254, c }, 3);
+                    break;
+                default:
+                    break;
+            } // end switch //
         }
 
         protected override void Input(DataLinkPrimitive p, bool expedited)
@@ -169,10 +393,10 @@ namespace OpenAX25_Console
                         Monitor.PulseAll(m_stateLock);
                         break;
                     case DataLinkPrimitive_T.DL_DATA_Indication_T :
-                        ConsoleChannel.Send(this, ((DL_DATA_Indication)p).Data, false);
+                        ReceiveFromRemote(((DL_DATA_Indication)p).Data, false);
                         break;
                     case DataLinkPrimitive_T.DL_UNIT_DATA_Indication_T :
-                        ConsoleChannel.Send(this, ((DL_UNIT_DATA_Indication)p).Data, true);
+                        ReceiveFromRemote(((DL_UNIT_DATA_Indication)p).Data, true);
                         break;
                     case DataLinkPrimitive_T.DL_DISCONNECT_Confirm_T :
                         m_state = SessionState.DISCONNECTED;
@@ -194,7 +418,83 @@ namespace OpenAX25_Console
                 Close();
         }
 
-        private void Send(byte[] data, int length)
+        private void ReceiveFromRemote(byte[] data, bool control)
+        {
+            if (data == null)
+                return;
+            int length = data.Length;
+            if (length < 2)
+                return;
+            int pid = data[0];
+            if ((pid != 0x00) && (pid != 0xF0))
+            {
+                m_runtime.Log(LogLevel.WARNING, m_name, String.Format(
+                    "Received unknow PID 0x{0:X2}", pid));
+            }
+
+            lock (this)
+            {
+                if (control != m_control)
+                {
+                    if (control)
+                        ConsoleChannel.SendToLocal(this, new byte[] { 0x0D, 0x0A, 0x07 }, 3);
+                    else
+                        ConsoleChannel.SendToLocal(this, new byte[] { 0x0D, 0x0A }, 2);
+                    m_control = control;
+                }
+
+                int i = 1, j;
+                int a = (int)(1.5 * (float)length);
+                byte[] b = new byte[a];
+                while (i < length)
+                {
+                    j = 0;
+                    while ((i < length) && (j < a))
+                    {
+                        byte x = data[i++];
+                        switch (x)
+                        {
+                            case 0x0D: // Allways use CR LF sequence.
+                                if (j + 2 >= a)
+                                {
+                                    --i;
+                                }
+                                else
+                                {
+                                    b[j++] = 0x0D;
+                                    b[j++] = 0x0A;
+                                }
+                                goto L0;
+                            case 0x0A:
+                                break;
+                            case 0x00:
+                                break;
+                            case 0xFF: // Escape IAC
+                                if (j + 2 >= a)
+                                {
+                                    --i;
+                                    goto L0;
+                                }
+                                b[j++] = 0xFF;
+                                b[j++] = 0xFF;
+                                break;
+                            default:
+                                b[j++] = x;
+                                break;
+                        } // end switch //
+                    } // end while //
+                L0:
+                    if (j >= 0)
+                        ConsoleChannel.SendToLocal(this, b, j + 1);
+                    if (i >= length)
+                        break;
+                    a = (int)(1.5 * (float)(length - i));
+                    b = new byte[a];
+                } // end while //
+            } // end lock //
+        }
+
+        private void SendToRemote(byte[] data, int length)
         {
             if (!m_active)
                 return;
@@ -207,14 +507,16 @@ namespace OpenAX25_Console
                 {
                     if (isControl)
                     {
-                        byte[] frame = new byte[length - 1];
-                        Array.Copy(data, 1, frame, 0, length - 1);
+                        byte[] frame = new byte[length];
+                        frame[0] = 0xF0; //  No L3 protocol.
+                        Array.Copy(data, 1, frame, 1, length - 1);
                         m_tx.Send(new DL_UNIT_DATA_Request(frame));
                     }
                     else
                     {
-                        byte[] frame = new byte[length];
-                        Array.Copy(data, 0, frame, 0, length);
+                        byte[] frame = new byte[length+1];
+                        frame[0] = 0xF0; //  No L3 protocol.
+                        Array.Copy(data, 0, frame, 1, length);
                         m_tx.Send(new DL_DATA_Request(frame));
                     }
                 }

@@ -35,7 +35,7 @@ namespace OpenAX25Core
 	/// <summary>
 	/// Core runtime object for OpenAX25.
 	/// </summary>
-	public class Runtime
+	public sealed class Runtime
 	{
 		
 		private ILogProvider m_logProvider = null;
@@ -49,16 +49,37 @@ namespace OpenAX25Core
         private XmlSchema m_configSchema = null;
         private string m_configFileName = "";
         private string m_configName = "";
+
+        private static Runtime instance = null;
+        private static Object instanceLock = new Object();
 		
 		/// <summary>
 		/// The one and only runtime object.
 		/// </summary>
-		public static readonly Runtime Instance = new Runtime();
+        public static Runtime Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    lock (instanceLock)
+                    {
+                        if (instance == null)
+                            instance = new Runtime();
+                    }
+                }
+                return instance;
+            }
+            set
+            {
+                instance = value;
+            }
+        }
 		
 		/// <summary>
 		/// Creation of Runtime object is not possible.
 		/// </summary>
-		private Runtime()
+		public Runtime()
 		{
             RegisterChannel(new L2NullChannel());
             RegisterChannel(new L3NullChannel());
@@ -425,7 +446,7 @@ namespace OpenAX25Core
 		/// Get a new frame no.
 		/// </summary>
 		/// <returns>New frame number.</returns>
-		public virtual UInt64 NewFrameNo()
+		public UInt64 NewFrameNo()
 		{
 			lock (this) {
 				unchecked {
@@ -433,6 +454,27 @@ namespace OpenAX25Core
 				}
 			}
 		}
+
+        /// <summary>
+        /// Shutdown the runtime object. Cannot be used afterwards.
+        /// </summary>
+        public void Shutdown()
+        {
+            Log(LogLevel.INFO, "Runtime", "Shutdown");
+            foreach (IChannel ch in m_channels.Values)
+            {
+                try
+                {
+                    ch.Close();
+                }
+                catch (Exception e)
+                {
+                    Log(LogLevel.WARNING, ch.Name, "Shutdown failure: " + e.Message);
+                }
+            } // end foreach //
+            m_channels.Clear();
+            Runtime.Instance = null;
+        }
 
         private void XSDValidationEventHandler(object sender, ValidationEventArgs e)
         {

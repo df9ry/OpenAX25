@@ -81,8 +81,42 @@ namespace OpenAX25GUI
 				dirty = true;
 			}
 		}
-		
-		public override void Save()
+
+        [UserScopedSetting()]
+        [DefaultSettingValue("")]
+        public String LogFile
+        {
+            get
+            {
+                return (String)this["LogFile"];
+            }
+            set
+            {
+                if (((String)this["LogFile"]).Equals(value))
+                    return;
+                this["LogFile"] = value;
+                dirty = true;
+            }
+        }
+
+        [UserScopedSetting()]
+        [DefaultSettingValue("")]
+        public String MonitorFile
+        {
+            get
+            {
+                return (String)this["MonitorFile"];
+            }
+            set
+            {
+                if (((String)this["MonitorFile"]).Equals(value))
+                    return;
+                this["MonitorFile"] = value;
+                dirty = true;
+            }
+        }
+
+        public override void Save()
 		{
 			if (dirty)
 				base.Save();

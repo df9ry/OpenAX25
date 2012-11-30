@@ -134,49 +134,52 @@ namespace OpenAX25_Vanilla
         /// <param name="expedited">Send expedited if set.</param>
         public void Send(DataLinkPrimitive message, bool expedited = false)
         {
-            switch (message.DataLinkPrimitiveType)
+            lock (this)
             {
-                case DataLinkPrimitive_T.DL_CONNECT_Request_T :
-                    m_receiver.Send(new DL_CONNECT_Confirm());
-                    m_receiver.Send(new DL_UNIT_DATA_Indication(
-                        Encoding.UTF8.GetBytes(Greeting(m_receiver.Name))));
-                    break;
-                case DataLinkPrimitive_T.DL_CONNECT_Confirm_T:
-                case DataLinkPrimitive_T.DL_CONNECT_Indication_T:
-                    m_connected = true;
-                    m_receiver.Send(new DL_UNIT_DATA_Indication(
-                        Encoding.UTF8.GetBytes("\0\r\n***Connected***\r\n")));
-                    break;
-                case DataLinkPrimitive_T.DL_DATA_Indication_T :
-                case DataLinkPrimitive_T.DL_UNIT_DATA_Indication_T :
-                    m_receiver.Send(message);
-                    break;
-                case DataLinkPrimitive_T.DL_DATA_Request_T:
-                    if (m_connected)
-                        m_target.Send(message);
-                    else
-                        ParseCommand(((DL_DATA_Request)message).Data, false);
-                    break;
-                case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
-                    ParseCommand(((DL_UNIT_DATA_Request)message).Data, false);
-                    break;
-                case DataLinkPrimitive_T.DL_DISCONNECT_Confirm_T :
-                case DataLinkPrimitive_T.DL_DISCONNECT_Indication_T :
-                    m_connected = false;
-                    m_receiver.Send(new DL_UNIT_DATA_Indication(
-                        Encoding.UTF8.GetBytes("\0\r\n***Disconnected***" + PROMPT)));
-                    break;
-                case DataLinkPrimitive_T.DL_ERROR_Indication_T :
-                    m_receiver.Send(new DL_UNIT_DATA_Indication(
-                        Encoding.UTF8.GetBytes("\0\r\n*** ERROR " +
-                            ((DL_ERROR_Indication)message).ErrorCode + " *** : " +
-                            ((DL_ERROR_Indication)message).Description + "\r\n")));
-                    break;
-                default:
-                    m_runtime.Log(LogLevel.WARNING, m_localEndpoint.Address,
-                        "Dropping unexpected primitive " + message.DataLinkPrimitiveTypeName);
-                    break;
-            } // end switch //
+                switch (message.DataLinkPrimitiveType)
+                {
+                    case DataLinkPrimitive_T.DL_CONNECT_Request_T:
+                        m_receiver.Send(new DL_CONNECT_Confirm());
+                        m_receiver.Send(new DL_UNIT_DATA_Indication(
+                            Encoding.UTF8.GetBytes(Greeting(m_receiver.Name))));
+                        break;
+                    case DataLinkPrimitive_T.DL_CONNECT_Confirm_T:
+                    case DataLinkPrimitive_T.DL_CONNECT_Indication_T:
+                        m_connected = true;
+                        m_receiver.Send(new DL_UNIT_DATA_Indication(
+                            Encoding.UTF8.GetBytes("\0*** Connected")));
+                        break;
+                    case DataLinkPrimitive_T.DL_DATA_Indication_T:
+                    case DataLinkPrimitive_T.DL_UNIT_DATA_Indication_T:
+                        m_receiver.Send(message);
+                        break;
+                    case DataLinkPrimitive_T.DL_DATA_Request_T:
+                        if (m_connected)
+                            m_target.Send(message);
+                        else
+                            ParseCommand(((DL_DATA_Request)message).Data, false);
+                        break;
+                    case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
+                        ParseCommand(((DL_UNIT_DATA_Request)message).Data, false);
+                        break;
+                    case DataLinkPrimitive_T.DL_DISCONNECT_Confirm_T:
+                    case DataLinkPrimitive_T.DL_DISCONNECT_Indication_T:
+                        m_connected = false;
+                        m_receiver.Send(new DL_UNIT_DATA_Indication(
+                            Encoding.UTF8.GetBytes("\0*** Disconnected" + PROMPT)));
+                        break;
+                    case DataLinkPrimitive_T.DL_ERROR_Indication_T:
+                        m_receiver.Send(new DL_UNIT_DATA_Indication(
+                            Encoding.UTF8.GetBytes("\0\r\n*** ERROR " +
+                                ((DL_ERROR_Indication)message).ErrorCode + " *** : " +
+                                ((DL_ERROR_Indication)message).Description + "\r\n")));
+                        break;
+                    default:
+                        m_runtime.Log(LogLevel.WARNING, m_localEndpoint.Address,
+                            "Dropping unexpected primitive " + message.DataLinkPrimitiveTypeName);
+                        break;
+                } // end switch //
+            }
         }
 
         /// <summary>
@@ -197,8 +200,11 @@ namespace OpenAX25_Vanilla
 
         private void ParseCommand(byte[] _cmd, bool isControl)
         {
+            if ((_cmd == null) || (_cmd.Length < 2))
+                return;
             try
             {
+                _cmd[0] = (byte)' '; // PID
                 string cmd = Encoding.UTF8.GetString(_cmd).Trim(new char[] { '\r', '\n', '\t', ' ' });
                 string[] args = cmd.Split(new char[]{' '}, StringSplitOptions.RemoveEmptyEntries);
                 if (args.Length == 0)
@@ -249,7 +255,7 @@ namespace OpenAX25_Vanilla
             {
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes(
-                    "\0***Already connected to " + m_remoteAddr + " ***\r\n")));
+                    "\0*** Already connected to " + m_remoteAddr + " ***\r\n")));
                 return;
             }
             // Make address string:
@@ -272,7 +278,7 @@ namespace OpenAX25_Vanilla
             } // end for //
             m_remoteAddr = sb.ToString();
             m_receiver.Send(new DL_UNIT_DATA_Indication(
-                Encoding.UTF8.GetBytes("\0*** Connecting to " + m_remoteAddr + " ***\r\n")));
+                Encoding.UTF8.GetBytes("\0*** Connecting to " + m_remoteAddr + " ...")));
             m_target.Send(new DL_CONNECT_Request(m_remoteAddr, AX25Version.V2_0));
         }
 

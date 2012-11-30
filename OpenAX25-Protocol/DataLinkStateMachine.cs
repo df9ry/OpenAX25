@@ -224,6 +224,7 @@ namespace OpenAX25_Protocol
         private bool F = false; // Final bit
         private bool P = false; // Poll bit
         private bool SREJEnabled;
+        private readonly Runtime m_runtime = Runtime.Instance;
         private readonly AX25Timer T1; // Outstanding I frame or P-bit.
         private readonly AX25Timer T3; // Idle supervision (keep alive).
         private readonly LinkMultiplexerStateMachine m_multiplexer;
@@ -322,6 +323,7 @@ namespace OpenAX25_Protocol
                 {
                     AX25_I i = (AX25_I)f;
                     P = i.P;
+                    F = false;
                     N_R = i.N_R;
                     N_S = i.N_S;
                 }
@@ -331,15 +333,19 @@ namespace OpenAX25_Protocol
                     P = (f.Command && s.PF);
                     F = (f.Response && s.PF);
                     N_R = s.N_R;
+                    N_S = -1;
                 }
                 else if (f is AX25UFrame)
                 {
                     AX25UFrame u = (AX25UFrame)f;
                     P = (f.Command && u.PF);
                     F = (f.Response && u.PF);
+                    N_R = -1;
+                    N_S = -1;
                 }
-                Runtime.Instance.Monitor("V_A=" + V_A + ",NR=" + N_R + ",V_S=" + V_S + ",V_R=" + V_R);
-                Runtime.Instance.Monitor("%INP[" + f.ToString() + "]");
+                TraceLog("%INP[" + f.ToString() + "]");
+                TraceLog(
+                    "::::: V_A=" + V_A + ",N_R=" + N_R + ",V_S=" + V_S + ",V_R=" + V_R + ",N_S=" + N_S);
                 switch (State)
                 {
                     case State_T.Disconnected: Disconnected(f); break;
@@ -1158,6 +1164,7 @@ namespace OpenAX25_Protocol
             return;
 
         L3270:
+            TraceLog("***** L3270");
             if (!((AX25_I)f).Command)
                 goto L3291;
             if (((AX25_I)f).InfoFieldLength > m_config.Initial_N1)
@@ -1168,6 +1175,7 @@ namespace OpenAX25_Protocol
             goto L3300;
 
         L3281:
+            TraceLog("***** L3281");
             OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorO));
             EstablishDataLink(m_version);
             Layer3Initiated = false;
@@ -1175,12 +1183,14 @@ namespace OpenAX25_Protocol
             return;
 
         L3291:
+            TraceLog("***** L3291");
             OnDataLinkOutputEvent(NewDL_ERROR_Indication(ErrorCode_T.ErrorS));
             /*DiscardIframe()*/
             State = State_T.Connected;
             return;
 
         L3300:
+            TraceLog("***** L3300");
             if (OwnReceiverBusy)
                 goto L3361;
             if (N_S != V_R)
@@ -1192,6 +1202,7 @@ namespace OpenAX25_Protocol
             OnDataLinkOutputEvent(new DL_DATA_Indication(((AX25_I)f).I));
 
         L3301:
+            TraceLog("***** L3301");
             if (IFrameStore[V_R] == null)
                 goto L3311;
             f = IFrameStore[V_R];
@@ -1203,6 +1214,7 @@ namespace OpenAX25_Protocol
             goto L3301;
 
         L3311:
+            TraceLog("***** L3311");
             if (P)
                 goto L3322;
             if (AcknowledgePending)
@@ -1212,6 +1224,7 @@ namespace OpenAX25_Protocol
             goto L3323;
 
         L3321:
+            TraceLog("***** L3321");
             if (!RejectException)
                 goto L3331;
             /*DiscardContentsOfIFrame();*/
@@ -1219,29 +1232,37 @@ namespace OpenAX25_Protocol
                 goto L3323;
 
         L3322:
+            TraceLog("***** L3322");
             F = true;
+            N_R = V_R;
             OnAX25OutputEvent(new AX25_RR(m_modulo, N_R, F, false, true));
             AcknowledgePending = false;
 
         L3323:
+            TraceLog("***** L3323");
             State = State_T.Connected;
             return;
 
         L3331:
+            TraceLog("***** L3331");
             if (SREJEnabled)
                 goto L3341;
 
         L3332:
+            TraceLog("***** L3332");
             /*DiscardContentsOfIFrame();*/
             RejectException = true;
             F = P;
+            N_R = V_R;
             OnAX25OutputEvent(new AX25_REJ(m_modulo, N_R, F, false, true));
 
         L3333:
+            TraceLog("***** L3333");
             AcknowledgePending = false;
             goto L3323;
 
         L3341:
+            TraceLog("***** L3341");
             IFrameStore[N_R] = (AX25_I)f;
             if (SRejectException > 0)
                 goto L3351;
@@ -1251,16 +1272,19 @@ namespace OpenAX25_Protocol
             F = true;
 
         L3342:
+            TraceLog("***** L342");
             ++SRejectException;
             OnAX25OutputEvent(new AX25_SREJ(m_modulo, N_R, F, false, true));
             goto L3333;
 
         L3351:
+            TraceLog("***** L3351");
             N_R = N_S;
             F = false;
             goto L3342;
 
         L3361:
+            TraceLog("***** L3361");
             /*DiscardContentsOfIFrame();*/
             if (!P)
                 goto L3362;
@@ -1269,6 +1293,7 @@ namespace OpenAX25_Protocol
             AcknowledgePending = false;
 
         L3362:
+            TraceLog("***** L3362");
             State = State_T.Connected;
             return;
 
@@ -2158,6 +2183,12 @@ namespace OpenAX25_Protocol
                 for (int i = 0; i < 128; ++i)
                     IFrameQueue[i] = null;
             }
+        }
+
+        private void TraceLog(string message)
+        {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, "DataLinkStateMachine", message);
         }
 
     }

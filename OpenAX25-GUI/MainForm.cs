@@ -44,6 +44,8 @@ namespace OpenAX25GUI
 		private Runtime m_runtime = Runtime.Instance;
 		private OpenAX25Settings m_settings = new OpenAX25Settings();
 		private Control[] m_controlsSave = null;
+        private StreamWriter m_logWriter = null;
+        private StreamWriter m_monitorWriter = null;
 		
 		/// <summary>
 		/// The Main Form of this application.
@@ -71,8 +73,16 @@ namespace OpenAX25GUI
 					mainTabControl.Controls.Remove(monitorTabPage);
 			}
 			this.configFileField.Text = m_settings.ConfigFile;
-			
-			//
+
+            this.logFileField.Text = m_settings.LogFile;
+            if (!String.IsNullOrEmpty(this.logFileField.Text))
+                OpenLogFile(this.logFileField.Text);
+
+            this.monitorFileField.Text = m_settings.MonitorFile;
+            if (!String.IsNullOrEmpty(this.monitorFileField.Text))
+                OpenMonitorFile(this.monitorFileField.Text);
+
+            //
 			// Start program:
 			//
 			Runtime.Instance.Log(LogLevel.INFO, "MainForm", "Program started");
@@ -95,7 +105,7 @@ namespace OpenAX25GUI
 			logLevelDebugButton.Checked   = (m_runtime.LogLevel == LogLevel.DEBUG  );
 			monitorCheckBox.Checked       = (m_runtime.MonitorProvider != null);
 		}
-		
+
 		/// <summary>
 		/// The logging implementation.
 		/// </summary>
@@ -103,8 +113,22 @@ namespace OpenAX25GUI
 		/// <param name="message">Log message</param>
 		public void OnLog(string component, string message)
 		{
-			string text = String.Format("{0}: {1}", component, message);
+			string text = String.Format("{0:yyyy-MM-dd HH:mm:ss.fff} [{1}]: {2}",
+                DateTime.UtcNow, component, message);
 			AppendLog(text);
+            if (m_logWriter != null)
+            {
+                try
+                {
+                    m_logWriter.WriteLine(text);
+                    m_logWriter.Flush();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: Unable to write to log file: " + ex.Message);
+                    m_logWriter = null;
+                }
+            }
 		}
 		
 		/// <summary>
@@ -114,7 +138,20 @@ namespace OpenAX25GUI
 		public void OnMonitor(string text)
 		{
 			AppendMonitor(text);
-		}
+            if (m_monitorWriter != null)
+            {
+                try
+                {
+                    m_monitorWriter.WriteLine(text);
+                    m_monitorWriter.Flush();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: Unable to write to monitor file: " + ex.Message);
+                    m_monitorWriter = null;
+                }
+            }
+        }
 		
 		private void AppendLog(string text)
 		{
@@ -249,6 +286,7 @@ namespace OpenAX25GUI
 		{
 			OpenFileDialog ofd = new OpenFileDialog();
 			FileInfo fi = new FileInfo(configFileField.Text);
+            ofd.Title = "Open Config File";
 			ofd.InitialDirectory = fi.Directory.FullName;
 			ofd.FileName = fi.Name;
 			ofd.Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*";
@@ -259,7 +297,6 @@ namespace OpenAX25GUI
 				try {
 					Stream st = ofd.OpenFile();
 					if (st != null) {
-						//TODO: Open File
 						st.Close();
 						configFileField.Text = ofd.FileName;
 						m_settings.ConfigFile = ofd.FileName;
@@ -269,5 +306,120 @@ namespace OpenAX25GUI
 				}
 			}
 		}
-	}
+
+        private void LogFileButtonClick(object sender, EventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Title = "Choose Log File";
+            sfd.AddExtension = true;
+            sfd.AutoUpgradeEnabled = true;
+            sfd.CheckFileExists = false;
+            sfd.CheckPathExists = true;
+            sfd.CreatePrompt = true;
+            sfd.DefaultExt = ".log";
+            sfd.DereferenceLinks = true;
+            sfd.OverwritePrompt = false;
+            sfd.ValidateNames = true;
+            if (!String.IsNullOrEmpty(logFileField.Text))
+            {
+                FileInfo fi = new FileInfo(logFileField.Text);
+                sfd.InitialDirectory = fi.Directory.FullName;
+                sfd.FileName = fi.Name;
+            }
+            sfd.Filter = "Log files (*.log)|*.log|Text files (*.txt)|*.txt|All files (*.*)|*.*";
+            sfd.FilterIndex = 1;
+            sfd.RestoreDirectory = true;
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                if (m_logWriter != null)
+                {
+                    try
+                    {
+                        m_logWriter.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error: Could not close log file: " + ex.Message);
+                    }
+                }
+                OpenLogFile(sfd.FileName);
+                if (m_logWriter != null)
+                {
+                    logFileField.Text = sfd.FileName;
+                    m_settings.LogFile = sfd.FileName;
+                }
+            }
+        }
+
+        private void OpenLogFile(string logFileName)
+        {
+            try
+            {
+                m_logWriter = File.AppendText(logFileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: Unable to open log file: " + ex.Message);
+                m_logWriter = null;
+            }
+        }
+
+        private void MonitorFileButtonClick(object sender, EventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Title = "Choose Monitor File";
+            sfd.AddExtension = true;
+            sfd.AutoUpgradeEnabled = true;
+            sfd.CheckFileExists = false;
+            sfd.CheckPathExists = true;
+            sfd.CreatePrompt = true;
+            sfd.DefaultExt = ".monitor";
+            sfd.DereferenceLinks = true;
+            sfd.OverwritePrompt = false;
+            sfd.ValidateNames = true;
+            if (!String.IsNullOrEmpty(monitorFileField.Text))
+            {
+                FileInfo fi = new FileInfo(monitorFileField.Text);
+                sfd.InitialDirectory = fi.Directory.FullName;
+                sfd.FileName = fi.Name;
+            }
+            sfd.Filter = "Monitor files (*.monitor)|*.monitor|Text files (*.txt)|*.txt|All files (*.*)|*.*";
+            sfd.FilterIndex = 1;
+            sfd.RestoreDirectory = true;
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                if (m_monitorWriter != null)
+                {
+                    try
+                    {
+                        m_monitorWriter.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error: Could not close monitor file: " + ex.Message);
+                    }
+                }
+                OpenMonitorFile(sfd.FileName);
+                if (m_monitorWriter != null)
+                {
+                    monitorFileField.Text = sfd.FileName;
+                    m_settings.MonitorFile = sfd.FileName;
+                }
+            }
+        }
+
+        private void OpenMonitorFile(string monitorFileName)
+        {
+            try
+            {
+                m_monitorWriter = File.AppendText(monitorFileName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: Unable to open monitor file: " + ex.Message);
+                m_monitorWriter = null;
+            }
+        }
+
+    }
 }

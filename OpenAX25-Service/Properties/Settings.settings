@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="OpenAX25_Service.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="ConfigFile" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">C:\Program Files\OpenAX25\OpenAX25-Service\Config.xml</Value>
+    </Setting>
+    <Setting Name="LogFile" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">C:\ProgramData\OpenAX25\OpenAX25-Service\Log.log</Value>
+    </Setting>
+    <Setting Name="LogLevel" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">INFO</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

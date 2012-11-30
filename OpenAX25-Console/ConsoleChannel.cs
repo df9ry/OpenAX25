@@ -30,7 +30,6 @@ namespace OpenAX25_Console
         private Thread m_thread = null;
         private Socket m_listener = null;
 
-
         /// <summary>
 		/// Constructor.
 		/// </summary>
@@ -269,7 +268,7 @@ namespace OpenAX25_Console
                 Session session = (Session)ar.AsyncState;
                 Socket socket = session.m_socket;
                 int bytesRead = socket.EndReceive(ar);
-                if ((bytesRead == 0) || !session.Receive(bytesRead))
+                if ((bytesRead == 0) || !session.ReceiveFromLocal(bytesRead))
                     session.Close();
             }
             catch (Exception e)
@@ -296,49 +295,12 @@ namespace OpenAX25_Console
             }
         }
 
-        internal static void Send(Session session, byte[] data, bool control, int length = -1)
+        internal static void SendToLocal(Session session, byte[] data, int length)
         {
-            if (length == -1)
-                length = data.Length;
             try
             {
-                int i = 1, j;
-                int a = (int)(1.5 * (float)length);
-                byte[] b = new byte[a];
-                while (i < length)
-                {
-                    j = 0;
-                    while ((i < length) && (j < a))
-                    {
-                        byte x = data[i++];
-                        switch (x)
-                        {
-                            case 0x0d :
-                                if (j + 2 >= a) {
-                                    --i;
-                                    goto L0;
-                                }
-                                b[j++] = 0x0d;
-                                b[j++] = 0x0a;
-                                break;
-                            case 0x0a:
-                                break;
-                            case 0x00:
-                                break;
-                            default:
-                                b[j++] = x;
-                                break;
-                        } // end switch //
-                    } // end while //
-                L0:
-                    if (j > 0)
-                        session.m_socket.BeginSend(b, 0, j, 0,
-                            new AsyncCallback(SendCallback), session);
-                    if (i >= length)
-                        break;
-                    a = (int)(1.5 * (float)(length - i));
-                    b = new byte[a];
-                } // end while //
+                session.m_socket.BeginSend(data, 0, length, 0,
+                    new AsyncCallback(SendCallback), session);
             }
             catch (Exception e)
             {
