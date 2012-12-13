@@ -50,8 +50,27 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="AX25Frame.cs" />
+    <Compile Include="AX25Payload.cs" />
+    <Compile Include="AX25InvalidFrame.cs" />
+    <Compile Include="AX25S.cs" />
+    <Compile Include="AX25U.cs" />
     <Compile Include="AX25Version.cs" />
     <Compile Include="AX25Modulo.cs" />
+    <Compile Include="AX25_DISC.cs" />
+    <Compile Include="AX25_DM.cs" />
+    <Compile Include="AX25_FRMR.cs" />
+    <Compile Include="AX25_I.cs" />
+    <Compile Include="AX25_REJ.cs" />
+    <Compile Include="AX25_RNR.cs" />
+    <Compile Include="AX25_RR.cs" />
+    <Compile Include="AX25_SABM.cs" />
+    <Compile Include="AX25_SABME.cs" />
+    <Compile Include="AX25_SREJ.cs" />
+    <Compile Include="AX25_TEST.cs" />
+    <Compile Include="AX25_UA.cs" />
+    <Compile Include="AX25_UI.cs" />
+    <Compile Include="AX25_XID.cs" />
     <Compile Include="DataLinkPrimitive.cs" />
     <Compile Include="IChannel.cs" />
     <Compile Include="IEndpoint.cs" />
@@ -64,17 +83,20 @@
     <Compile Include="IMonitorProvider.cs" />
     <Compile Include="IRemoteEndpoint.cs" />
     <Compile Include="IPrimitive.cs" />
+    <Compile Include="ManagementDataLinkPrimitive.cs" />
+    <Compile Include="LinkMultiplexerPrimitive.cs" />
     <Compile Include="NotFoundException.cs" />
     <Compile Include="L2Callsign.cs" />
     <Compile Include="DuplicateNameException.cs" />
     <Compile Include="FactoryNotFoundException.cs" />
     <Compile Include="L2Frame.cs" />
-    <Compile Include="L2Header.cs" />
+    <Compile Include="AX25Header.cs" />
     <Compile Include="InvalidAX25FrameException.cs" />
     <Compile Include="InvalidPropertyException.cs" />
     <Compile Include="MissingPropertyException.cs" />
     <Compile Include="NoSpaceException.cs" />
     <Compile Include="LogLevel.cs" />
+    <Compile Include="PhysicalLayerPrimitive.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

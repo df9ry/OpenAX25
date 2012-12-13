@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <OpenAX25Routes name="Default" xmlns="urn:OpenAX25Routes">
     
-    <!-- Forward frames to DF9RY to the PROTO -->
-    <Route target="PROTO">
+    <!-- Forward frames to DF9RY to DPXPH -->
+    <Route target="DPXPH">
         <Pattern>^DF9RY-</Pattern>
         <Property name="Channel">0</Property>
     </Route>

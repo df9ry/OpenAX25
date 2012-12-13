@@ -29,6 +29,7 @@ using System.Reflection;
 using System.IO;
 using System.Xml.Schema;
 using System.Xml;
+using System.Text;
 
 namespace OpenAX25Core
 {
@@ -474,6 +475,39 @@ namespace OpenAX25Core
             } // end foreach //
             m_channels.Clear();
             Runtime.Instance = null;
+        }
+
+        /// <summary>
+        /// Prints detailled stack trace information to the log.
+        /// </summary>
+        /// <param name="ll">Log level</param>
+        /// <param name="module">Module reporting the failure</param>
+        /// <param name="message">User message</param>
+        /// <param name="e">Exception</param>
+        public void StackTrace(LogLevel ll, string module, string message, Exception e)
+        {
+            if (LogLevel < ll)
+                return;
+            StringBuilder sb = new StringBuilder();
+            sb.Append(message);
+            while (e != null)
+            {
+                sb.Append("\n*** ");
+                sb.Append(e.GetType().Name);
+                sb.Append(" ***");
+                sb.Append("\n Message: ");
+                sb.Append(e.Message);
+                sb.Append("\n Source : ");
+                sb.Append(e.Source);
+                sb.Append("\n Target : ");
+                sb.Append(e.TargetSite);
+                sb.Append("\n Stack  :\n");
+                sb.Append(e.StackTrace);
+                e = e.InnerException;
+                if (e != null)
+                    sb.Append("\n Inner:\n");
+            } // end while //
+            Log(ll, module, sb.ToString());
         }
 
         private void XSDValidationEventHandler(object sender, ValidationEventArgs e)

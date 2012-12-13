@@ -48,7 +48,7 @@ namespace OpenAX25Core
 		/// <description>Description</description>
 		/// </listheader>
 		/// <item><term>Name</term><description>Name of the channel [Mandatory]</description>
-		/// <item><term>Target</term><description>Where to route packages to [Default: PROTO]</description></item>
+		/// <item><term>Target</term><description>Where to route packages to [Default: NULL]</description></item>
 		/// </item>
 		/// </list>
 		/// </param>
@@ -60,11 +60,12 @@ namespace OpenAX25Core
             : base(properties, alias, suppressRegistration)
 		{
             string _target;
-            if (!properties.TryGetValue("Target", out _target))
-                _target = "PROTO";
-            m_target = m_runtime.LookupL3Channel(_target);
-			if (m_target == null)
-				throw new InvalidPropertyException("Target not found: " + _target);
+            if (properties.TryGetValue("Target", out _target))
+            {
+                m_target = m_runtime.LookupL3Channel(_target);
+                if (m_target == null)
+                    throw new InvalidPropertyException("Target not found: " + _target);
+            }
 		}
 		
         /// <summary>
@@ -134,7 +135,7 @@ namespace OpenAX25Core
         /// </summary>
         /// <param name="p">Data Link primitive to send</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public virtual void Send(DataLinkPrimitive p, bool expedited = true)
+        public virtual void Send(IPrimitive p, bool expedited = true)
         {
             lock (this)
             {
@@ -185,20 +186,20 @@ namespace OpenAX25Core
         /// </summary>
         /// <param name="p">The message to process.</param>
         /// <param name="expedited">Send express if set.</param>
-        protected virtual void Input(DataLinkPrimitive p, bool expedited)
+        protected virtual void Input(IPrimitive p, bool expedited)
         {
             m_runtime.Log(LogLevel.WARNING, m_name, "Input Method not implemented");
             throw new Exception(
-                "L3Channel.Input(DataLinkPrimitive p, bool expedited) is not implemented in channel \""
+                "L3Channel.Input(IPrimitive p, bool expedited) is not implemented in channel \""
                 + m_name + "\"");
         }
 
         private struct Entry
         {
-            internal readonly DataLinkPrimitive p;
+            internal readonly IPrimitive p;
             internal readonly bool expedited;
 
-            internal Entry(DataLinkPrimitive _p, bool _expedited)
+            internal Entry(IPrimitive _p, bool _expedited)
             {
                 p = _p;
                 expedited = _expedited;

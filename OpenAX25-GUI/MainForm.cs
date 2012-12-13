@@ -39,8 +39,6 @@ namespace OpenAX25GUI
 		private const int MAX_LOG_LINES = 1000;
 		private const int MAX_MONITOR_LINES = 1000;
 
-		private ArrayList m_logLines = new ArrayList(MAX_LOG_LINES);
-		private ArrayList m_monitorLines = new ArrayList(MAX_MONITOR_LINES);
 		private Runtime m_runtime = Runtime.Instance;
 		private OpenAX25Settings m_settings = new OpenAX25Settings();
 		private Control[] m_controlsSave = null;
@@ -160,19 +158,20 @@ namespace OpenAX25GUI
 				this.Invoke(new Action<string>(AppendLog), new object[] {text});
 				return;
 			}
-			
-			string[] lines;
-			if (m_logLines.Count >= MAX_LOG_LINES) {
-				lines = (string[]) m_logLines.ToArray(typeof(string));
-				for (int i = 1; i < lines.Length; ++i)
+
+            string[] lines = logTextBox.Lines;
+            int c = lines.Length;
+            if (c >= MAX_LOG_LINES)
+            {
+				for (int i = 1; i < c-1; ++i)
 					lines[i-1] = lines[i];
-				lines[m_logLines.Count - 1] = text;
-			} else {
-				m_logLines.Add(text);
-				lines = (string[]) m_logLines.ToArray(typeof(string));
+                lines[c-1] = text;
+                logTextBox.Lines = lines;
+            }
+            else
+            {
+				logTextBox.AppendText(text);
 			}
-			
-			logTextBox.Lines = lines;
 			logTextBox.AppendText(Environment.NewLine);
 			logTextBox.ScrollToCaret();
 		}
@@ -184,19 +183,18 @@ namespace OpenAX25GUI
 				this.Invoke(new Action<string>(AppendMonitor), new object[] {text});
                 return;
 			}
-			
-			string[] lines;
-			if (m_monitorLines.Count >= MAX_MONITOR_LINES) {
-				lines = (string[]) m_monitorLines.ToArray(typeof(string));
-				for (int i = 1; i < lines.Length; ++i)
+
+            string[] lines = monitorTextBox.Lines;
+            int c = lines.Length;
+            if (c >= MAX_MONITOR_LINES)
+            {
+				for (int i = 1; i < c-1; ++i)
 					lines[i-1] = lines[i];
-				lines[m_monitorLines.Count - 1] = text;
+				lines[c-1] = text;
+                monitorTextBox.Lines = lines;
 			} else {
-				m_monitorLines.Add(text);
-				lines = (string[]) m_monitorLines.ToArray(typeof(string));
+				monitorTextBox.AppendText(text);
 			}
-			
-			monitorTextBox.Lines = lines;
 			monitorTextBox.AppendText(Environment.NewLine);
 			monitorTextBox.ScrollToCaret();
 		}

@@ -405,7 +405,7 @@ namespace OpenAX25_TCPServer
                 int errors = m_errors;
                 if (m_state != ConnectionState.WAITING_FOR_CONNECT)
                 {
-                    DL_CONNECT_Request rq = new DL_CONNECT_Request(m_remoteAddr, m_version);
+                    DL_CONNECT_Request rq = new DL_CONNECT_Request();
                     m_transmitter.Send(rq);
                     m_state = ConnectionState.WAITING_FOR_CONNECT;
                 }
@@ -455,8 +455,11 @@ namespace OpenAX25_TCPServer
         /// <param name="sender">The sender of the message.</param>
         /// <param name="p">The message to process.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        protected override void Input(DataLinkPrimitive p, bool expedited = false)
+        protected override void Input(IPrimitive _p, bool expedited = false)
         {
+            if (!(_p is DataLinkPrimitive))
+                throw new Exception("Expected DataLinkPrimitive. Was: " + _p.GetType().Name);
+            DataLinkPrimitive p = (DataLinkPrimitive)_p;
             try
             {
                 lock (this)

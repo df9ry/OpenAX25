@@ -46,7 +46,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AX25SynchronizedQueue.cs" />
+    <Compile Include="AX25Timer.cs" />
     <Compile Include="Channel.cs" />
+    <Compile Include="AX25Queue.cs" />
     <Compile Include="L3NullChannel.cs" />
     <Compile Include="CrcB.cs" />
     <Compile Include="HexConverter.cs" />

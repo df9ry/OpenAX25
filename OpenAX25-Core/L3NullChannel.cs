@@ -58,7 +58,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Get or set the target channel for received data.
         /// </summary>
-        public IL3Channel L3Target { get { return null; } set {} }
+        public IL3Channel L3Target { get { return this; } set {} }
 		
 		/// <summary>
 		/// Open the interface.
@@ -79,7 +79,7 @@ namespace OpenAX25Core
         /// <summary>
         /// Send message over the channel.
         /// </summary>
-        public void Send(DataLinkPrimitive _1, bool _2) {}
+        public void Send(IPrimitive _1, bool _2) {}
 
     }
 }

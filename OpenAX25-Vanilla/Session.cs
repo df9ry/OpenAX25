@@ -16,9 +16,11 @@ namespace OpenAX25_Vanilla
         private readonly LocalEndpoint m_localEndpoint;
         private readonly IL3Channel m_receiver;
         private readonly string m_name;
+        private IDictionary<string, string> m_properties;
         private IL3Channel m_target = null;
         private bool m_connected = false;
-        private string m_remoteAddr = "";
+        private string m_remoteAddr = String.Empty;
+        private string m_digis = String.Empty;
 
         private delegate void OnCommandHandler(string[] args);
         private IDictionary<string, OnCommandHandler> m_cmdTbl =
@@ -28,7 +30,8 @@ namespace OpenAX25_Vanilla
         {
             m_localEndpoint = localEndpoint;
             m_receiver = receiver;
-            m_name = localEndpoint.Address + "(" + receiver.Name + ")";
+            m_name = localEndpoint.Address + "/" + receiver.Name;
+            m_properties = m_localEndpoint.m_channel.Properties;
             m_cmdTbl.Add("help", new OnCommandHandler(OnHelp));
             m_cmdTbl.Add("h",    new OnCommandHandler(OnHelp));
             m_cmdTbl.Add("quit", new OnCommandHandler(OnQuit));
@@ -55,7 +58,7 @@ namespace OpenAX25_Vanilla
         /// <value>
         /// The properties.
         /// </value>
-        public IDictionary<string, string> Properties { get { return m_target.Properties; } }
+        public IDictionary<string, string> Properties { get { return m_properties; } }
 
         /// <summary>
         /// Open the interface.
@@ -64,10 +67,6 @@ namespace OpenAX25_Vanilla
         {
             if (m_target != null)
                 return;
-            m_target = m_localEndpoint.m_targetLocalEndpoint.Bind(
-                this, m_localEndpoint.m_channel.Properties);
-            if (m_target == null)
-                throw new Exception("Vanilla: Unable to bind");
         }
 
         /// <summary>
@@ -117,14 +116,15 @@ namespace OpenAX25_Vanilla
         /// </summary>
         public void Reset()
         {
+            Close();
+            Open();
         }
 
         /// <summary>
         /// Get or set the target channel.
         /// </summary>
         public IL3Channel L3Target {
-            get { return m_localEndpoint.m_channel.L3Target; }
-            set { }
+            get { return m_target; }
         }
 
         /// <summary>
@@ -132,11 +132,14 @@ namespace OpenAX25_Vanilla
         /// </summary>
         /// <param name="message">The primitive to send.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public void Send(DataLinkPrimitive message, bool expedited = false)
+        public void Send(IPrimitive _p, bool expedited = false)
         {
+            if (!(_p is DataLinkPrimitive))
+                throw new Exception("Expected DataLinkPrimitive. Was: " + _p.GetType().Name);
+            DataLinkPrimitive p = (DataLinkPrimitive)_p;
             lock (this)
             {
-                switch (message.DataLinkPrimitiveType)
+                switch (p.DataLinkPrimitiveType)
                 {
                     case DataLinkPrimitive_T.DL_CONNECT_Request_T:
                         m_receiver.Send(new DL_CONNECT_Confirm());
@@ -151,32 +154,33 @@ namespace OpenAX25_Vanilla
                         break;
                     case DataLinkPrimitive_T.DL_DATA_Indication_T:
                     case DataLinkPrimitive_T.DL_UNIT_DATA_Indication_T:
-                        m_receiver.Send(message);
+                        m_receiver.Send(p);
                         break;
                     case DataLinkPrimitive_T.DL_DATA_Request_T:
-                        if (m_connected)
-                            m_target.Send(message);
+                        if (m_connected && (m_target != null))
+                            m_target.Send(p);
                         else
-                            ParseCommand(((DL_DATA_Request)message).Data, false);
+                            ParseCommand(((DL_DATA_Request)p).Data, false);
                         break;
                     case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
-                        ParseCommand(((DL_UNIT_DATA_Request)message).Data, false);
+                        ParseCommand(((DL_UNIT_DATA_Request)p).Data, false);
                         break;
                     case DataLinkPrimitive_T.DL_DISCONNECT_Confirm_T:
                     case DataLinkPrimitive_T.DL_DISCONNECT_Indication_T:
                         m_connected = false;
+                        Unbind();
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes("\0*** Disconnected" + PROMPT)));
                         break;
                     case DataLinkPrimitive_T.DL_ERROR_Indication_T:
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes("\0\r\n*** ERROR " +
-                                ((DL_ERROR_Indication)message).ErrorCode + " *** : " +
-                                ((DL_ERROR_Indication)message).Description + "\r\n")));
+                                ((DL_ERROR_Indication)p).ErrorCode + " *** : " +
+                                ((DL_ERROR_Indication)p).Description + "\r\n")));
                         break;
                     default:
                         m_runtime.Log(LogLevel.WARNING, m_localEndpoint.Address,
-                            "Dropping unexpected primitive " + message.DataLinkPrimitiveTypeName);
+                            "Dropping unexpected primitive " + p.DataLinkPrimitiveTypeName);
                         break;
                 } // end switch //
             }
@@ -266,27 +270,71 @@ namespace OpenAX25_Vanilla
                     ERROR + " *** Usage: 'connect [call] {via} {digis}' ***" + PROMPT)));
                 return;
             }
-            StringBuilder sb = new StringBuilder();
-            sb.Append(args[1]); // Destination
-            for (int i = 2; i < args.Length; ++i)
+            try
             {
-                string arg = args[i].ToLower(CultureInfo.InvariantCulture);
-                if ((i == 2) && ("v".Equals(arg) || "via".Equals(arg)))
-                    continue;
-                sb.Append(' ');
-                sb.Append(arg);
-            } // end for //
-            m_remoteAddr = sb.ToString();
-            m_receiver.Send(new DL_UNIT_DATA_Indication(
-                Encoding.UTF8.GetBytes("\0*** Connecting to " + m_remoteAddr + " ...")));
-            m_target.Send(new DL_CONNECT_Request(m_remoteAddr, AX25Version.V2_0));
+                string m_remoteAddr = (new L2Callsign(args[1])).ToString();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 2; i < args.Length; ++i)
+                {
+                    string arg = args[i].ToLower(CultureInfo.InvariantCulture);
+                    if ((i == 2) && ("v".Equals(arg) || "via".Equals(arg)))
+                        continue;
+                    if (sb.Length > 0)
+                        sb.Append(' ');
+                    sb.Append(new L2Callsign(arg).ToString());
+                } // end for //
+                m_digis = sb.ToString();
+                if (m_target != null)
+                    Unbind();
+                m_properties = new Dictionary<string, string>(m_properties);
+                if (m_properties.ContainsKey("RemoteAddr"))
+                    m_properties.Remove("RemoteAddr");
+                m_properties.Add("RemoteAddr", m_remoteAddr);
+                if (m_properties.ContainsKey("Route"))
+                    m_properties.Remove("Route");
+                m_properties.Add("Route", m_digis);
+                m_target = m_localEndpoint.m_targetLocalEndpoint.Bind(
+                    this, m_properties, m_name + "/" + m_remoteAddr);
+                m_receiver.Send(new DL_UNIT_DATA_Indication(
+                    Encoding.UTF8.GetBytes("\0*** Connecting to " + m_remoteAddr + " ...")));
+                m_target.Send(new DL_CONNECT_Request());
+            }
+            catch (Exception e)
+            {
+                m_receiver.Send(new DL_UNIT_DATA_Indication(
+                    Encoding.UTF8.GetBytes("\0*** Error: " + e.Message + PROMPT)));
+            }
         }
 
         private void OnDisc(string[] args)
         {
-            m_connected = false;
-            m_remoteAddr = "";
-            m_target.Send(new DL_DISCONNECT_Request());
+            if (m_target != null)
+                m_target.Send(new DL_DISCONNECT_Request());
+            Unbind();
+        }
+
+        private void Unbind()
+        {
+            try
+            {
+                if (m_target != null)
+                    m_localEndpoint.m_targetLocalEndpoint.Unbind(m_target);
+            }
+            catch (Exception e)
+            {
+                m_receiver.Send(new DL_UNIT_DATA_Indication(
+                    Encoding.UTF8.GetBytes(
+                        "\0*** Error unbinding from " + m_remoteAddr + " via " + m_digis + "\r\n" +
+                          "    " + e.Message)));
+            }
+            finally
+            {
+                m_target = null;
+                m_connected = false;
+                m_remoteAddr = String.Empty;
+                m_digis = String.Empty;
+                m_properties = m_localEndpoint.m_channel.Properties;
+            }
         }
 
         /// <summary>

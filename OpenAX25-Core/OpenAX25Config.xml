@@ -4,15 +4,26 @@
 		<Assembly file="OpenAX25-Router.dll" />
 		<Assembly file="OpenAX25-KISS.dll" />
 		<Assembly file="OpenAX25-AXUDP.dll" />
-        <Assembly file="OpenAX25-Protocol.dll" />
+        <Assembly file="OpenAX25-DuplexPhysicalLayer.dll" />
+        <Assembly file="OpenAX25-LinkMultiplexer.dll" />
+        <Assembly file="OpenAX25-DataLink.dll" />
         <Assembly file="OpenAX25-Vanilla.dll" />
-        <Assembly file="OpenAX25-TCPServer.dll" />
         <Assembly file="OpenAX25-Console.dll" />
     </Assemblies>
 	<Channels>
-		<Channel name="Router" class="ROUTER" open="true">
-			<Property name="Routes">OpenAX25Routes.xml</Property>
-		</Channel>
+
+        <!-- Core distribution point -->
+        <Channel name="Router" class="ROUTER" open="true">
+            <Property name="Routes">OpenAX25Routes.xml</Property>
+        </Channel>
+
+        <!-- Internet link to DB0FHN -->
+        <Channel name="DB0FHN" class="AXUDP" target="Router" open="true">
+            <Property name="Port">9300</Property>
+            <Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
+            <Property name="Mode">Client</Property>
+        </Channel>
+
         <!-- TNC channel 
 		<Channel name="TNC" class="KISS" target="Router" open="true">
 			<Property name="Port">0</Property>
@@ -20,15 +31,34 @@
 			<Property name="BaudRate">9600</Property>
 		</Channel>
         -->
-        <Channel name="PROTO" class="PROTO" target="Router" open="true">
+
+        <!-- Duplex Physical State Layer -->
+        <Channel name="DPXPH" class="DPXPH" target="Router" open="true">
+            <Property name="Modulo">8</Property>   <!-- Modulo 8 frames           -->
+            <Property name="T091">500</Property>   <!-- Transmitter startup delay -->
+            <Property name="T105">500</Property>   <!-- Squelch idle time         -->
+            <Property name="T107">60000</Property> <!-- Transmitter time limit    -->
         </Channel>
-        <Channel name="DB0FHN" class="AXUDP" target="Router" open="true">
-			<Property name="Port">9300</Property>
-			<Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
-			<Property name="Mode">Client</Property>
-		</Channel>
-        <Channel name="VANILLA" class="VANILLA" target="PROTO" open="true">
+        
+        <!-- Link Multiplexer -->
+        <Channel name="LMPX" class="LMPX" target="DPXPH" open="true">
+            <Property name="Digi">^DF9RY-</Property> <!-- Enable digipeat for my own call signs. -->
         </Channel>
+        
+        <!-- Data Link State Machine -->
+        <Channel name="DL" class="DL" target="LMPX" open="true">
+        </Channel>
+        
+        <!-- Vanilla Session Manager -->
+        <Channel name="VANILLA" class="VANILLA" target="DL" open="true">
+        </Channel>
+
+        <!-- Console Link -->
+        <Channel name="CONSOLE" class="CONSOLE" target="VANILLA" open="true">
+            <Property name="Port">9000</Property>
+            <Property name="LocalAddr">DF9RY-1</Property>
+        </Channel>
+
         <!--
         <Channel name="FHNLINK" class="TCPSERVER" target="VANILLA" open="true">
             <Property name="Port">9300</Property>
@@ -41,9 +71,6 @@
             <Property name="N2">4</Property>
         </Channel>
         -->
-        <Channel name="CONSOLE" class="CONSOLE" target="VANILLA" open="true">
-            <Property name="Port">9000</Property>
-            <Property name="LocalAddr">DF9RY-1</Property>
-        </Channel>
+        
     </Channels>
 </OpenAX25Config>

@@ -64,9 +64,14 @@ namespace OpenAX25Core
 		protected Int64 m_txErrors;
 		
 		/// <summary>
-		/// Trnamitter queue.
+		/// Transmitter queue.
 		/// </summary>
-		protected IList<L2Frame> m_txQueue = new List<L2Frame>();
+		protected Queue<L2Frame> m_txQueue = new Queue<L2Frame>();
+
+        /// <summary>
+        /// Expedited transmitter queue.
+        /// </summary>
+        protected Queue<L2Frame> m_expeditedTxQueue = new Queue<L2Frame>();
 		
 		/// <summary>
 		/// Lock object for TX thread synchronization.
@@ -219,72 +224,31 @@ namespace OpenAX25Core
         /// <returns>Frame number.</returns>
         public virtual UInt64 ForwardFrame(L2Frame frame)
 		{
-            if (frame.addr == null)
+            if (frame.properties == null)
                 throw new ArgumentNullException("frame.addr");
             if (frame.data == null)
                 throw new ArgumentNullException("frame.data");
-			lock (this.m_txQueue) {
-				int i = this.m_txQueue.Count;
-				if (frame.isPriorityFrame)
-					for (i = 0; i < this.m_txQueue.Count; ++i)
-						if (!this.m_txQueue[i].isPriorityFrame)
-							break;
-				/*
-				if (m_runtime.LogLevel >= L2LogLevel.DEBUG) {
-					string text = String.Format(
-						"SendFrame({0}) NO={1} AT={2}",
-						L2HexConverter.ToHexString(frame.data), frame.no, i);
-					m_runtime.Log(L2LogLevel.DEBUG, m_name, text);
-				}
-				*/
-				this.m_txQueue.Insert(i, frame);
-				int len = frame.data.Length;
-				unchecked {
-					this.m_txOctets += len;
-					this.m_txTotal += len;
-				}
-			}
-			lock (this.m_txSync) {
-				Monitor.Pulse(this.m_txSync);
+            if (frame.isPriorityFrame)
+                lock (m_expeditedTxQueue)
+                {
+                    m_expeditedTxQueue.Enqueue(frame);
+                }
+            else
+                lock (m_txQueue)
+                {
+                    m_txQueue.Enqueue(frame);
+                }
+            lock (this.m_txSync)
+            {
+                int len = frame.data.Length;
+			    unchecked {
+				    this.m_txOctets += len;
+				    this.m_txTotal += len;
+			    }
+                Monitor.Pulse(this.m_txSync);
 			}
 			return frame.no;
 		}
-
-        /// <summary>
-		/// Try to cancel the transmittion of a frame. If the frame is in the
-		/// progress of transmission or transmitted already, <c>false</c> is
-		/// returned.
-		/// </summary>
-		/// <param name="frameNo">The frame number of the frame to cancel.</param>
-		/// <returns><c>true</c> if the frame could be cancelled; <c>false</c>
-		/// otherwise</returns>
-		public virtual bool CancelFrame(UInt64 frameNo)
-		{
-			lock (this.m_txQueue) {
-				int i = -1;
-				for (int j = 0; j < this.m_txQueue.Count; ++j)
-					if (this.m_txQueue[j].no == frameNo) {
-						i = j;
-						break;
-					}
-				if (i >= 0) {
-					int l = this.m_txQueue[i].data.Length;
-					this.m_txQueue.RemoveAt(i);
-					unchecked {
-						this.m_txOctets -= l;
-						this.m_txTotal -= 1;
-					}
-					m_runtime.Log(LogLevel.DEBUG, m_name,
-					              String.Format("Successfully cancelled frame no {0}", frameNo));
-					return true;
-				} else {
-					m_runtime.Log(LogLevel.DEBUG, m_name,
-					              String.Format("Unable to cancel frame no {0}", frameNo));
-					return false;
-				}
-			}
-		}
-
 
 		/// <summary>
 		/// Reset the channel and withdraw all frames in the
@@ -295,7 +259,14 @@ namespace OpenAX25Core
 			m_runtime.Log(LogLevel.INFO, m_name, "Channel reset");
 			lock (this) {
 				this.Close();
-				this.m_txQueue.Clear();
+                lock (m_txQueue)
+                {
+                    this.m_txQueue.Clear();
+                }
+                lock (m_expeditedTxQueue)
+                {
+                    this.m_expeditedTxQueue.Clear();
+                }
 				this.m_txOctets = 0;
 				this.Open();
 			}
@@ -337,30 +308,64 @@ namespace OpenAX25Core
 		protected void ForwardHandler()
 		{
 			m_runtime.Log(LogLevel.DEBUG, m_name, "ForwardThread start");
-			while (!this.m_txThreadStop) {
-				L2Frame frame = L2Frame.Empty;
-				lock(this.m_txQueue) {
-					if (this.m_txQueue.Count > 0) {
-						frame = this.m_txQueue[0];
-						this.m_txQueue.RemoveAt(0);
-						unchecked {
-							this.m_txOctets -= frame.data.Length;
-						}
-					}
-				} // end lock //
-				if (frame.IsEmpty()) {
-					lock(this.m_txSync) {
-						Monitor.Wait(this.m_txSync);
-					}
-				} else {
-					try {
-						this.OnForward(frame);
-					} catch (Exception ex) {
-						this.OnForwardError(
-							"Unable to forward frame on interface " + this.m_name, ex);
-					}
-				}
-			} // end while //
+            while (!this.m_txThreadStop)
+            {
+                while (true)
+                {
+                    L2Frame frame;
+                    while (m_expeditedTxQueue.Count > 0)
+                    {
+                        lock (m_expeditedTxQueue)
+                        {
+                            if (m_expeditedTxQueue.Count == 0)
+                                continue;
+                            frame = m_expeditedTxQueue.Dequeue();
+                        }
+                        unchecked
+                        {
+                            this.m_txOctets -= frame.data.Length;
+                        }
+                        try
+                        {
+                            this.OnForward(frame);
+                        }
+                        catch (Exception ex)
+                        {
+                            this.OnForwardError(
+                                "Unable to forward expedited frame on interface " +
+                                this.m_name, ex);
+                            continue;
+                        }
+                    } // end while //
+                    if (m_txQueue.Count == 0)
+                        break;
+                    lock (m_txQueue)
+                    {
+                        if (m_txQueue.Count == 0)
+                            break;
+                        frame = m_txQueue.Dequeue();
+                    }
+                    unchecked
+                    {
+                        this.m_txOctets -= frame.data.Length;
+                    }
+                    try
+                    {
+                        this.OnForward(frame);
+                    }
+                    catch (Exception ex)
+                    {
+                        this.OnForwardError(
+                            "Unable to forward frame on interface " +
+                            this.m_name, ex);
+                        continue;
+                    }
+                } // end while //
+                lock (this.m_txSync)
+                {
+                    Monitor.Wait(this.m_txSync);
+                }
+            } // end while //
 			m_runtime.Log(LogLevel.INFO, m_name, "ForwardThread end");
 		}
 
@@ -399,7 +404,7 @@ namespace OpenAX25Core
 		/// <param name="frame">Data to send</param>
 		protected virtual void OnForward(L2Frame frame)
 		{
-			if (frame.addr == null)
+			if (frame.properties == null)
 				throw new ArgumentNullException("frame.addr");
 			if (frame.data == null)
 				throw new ArgumentNullException("frame.data");
@@ -425,7 +430,8 @@ namespace OpenAX25Core
 				message = String.Format("Forward error: {0}: {1}", message, ex.Message);
 			else
 				message = String.Format("Forward error: {0}", message);
-			m_runtime.Log(LogLevel.ERROR, "L2Channel", message);
+            m_runtime.StackTrace(LogLevel.ERROR, m_name,
+                "Unable to forward frame on interface " + this.m_name, ex);
 			unchecked {
 				this.m_txErrors += 1;
 			}

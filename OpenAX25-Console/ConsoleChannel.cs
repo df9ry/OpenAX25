@@ -256,7 +256,7 @@ namespace OpenAX25_Console
             catch (Exception e)
             {
                 Runtime.Instance.Log(LogLevel.ERROR,
-                    "TCPServerChannel", "Spurios exception in \"AcceptCallback\": "
+                    "ConsoleChannel", "Spurios exception in \"AcceptCallback\": "
                         + e.Message);
             }
         }
@@ -321,7 +321,7 @@ namespace OpenAX25_Console
             catch (Exception e)
             {
                 Runtime.Instance.Log(LogLevel.ERROR,
-                    "TCPServerChannel", "Spurios exception in \"SendCallback\": "
+                    "ConsoleChannel", "Spurios exception in \"SendCallback\": "
                         + e.Message);
             }
         }

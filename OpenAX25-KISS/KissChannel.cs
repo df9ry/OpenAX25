@@ -124,7 +124,7 @@ namespace OpenAX25Kiss
 					port = kissPort;
 				} else {
 					string _port;
-					if (!frame.addr.TryGetValue("Port", out _port))
+					if (!frame.properties.TryGetValue("Port", out _port))
 						throw new MissingPropertyException("Port");
 					if ("Raw".Equals(_port)) { // This is a raw packet:
 						this.port.Write(frame.data, 0, frame.data.Length);
@@ -233,8 +233,8 @@ namespace OpenAX25Kiss
 								byte[] octets = new Byte[iFrameBuffer-1];
 								Array.Copy(rxFrameBuffer, 1, octets, 0, iFrameBuffer-1);
 								L2Frame frame = new L2Frame(m_runtime.NewFrameNo(), false, octets);
-								frame.addr.Add("Port", String.Format("{0}", port));
-								frame.addr.Add("Channel", m_name);
+								frame.properties.Add("Port", String.Format("{0}", port));
+								frame.properties.Add("Channel", m_name);
 								this.OnReceive(frame);
 							}
 							this.iFrameBuffer = 0;

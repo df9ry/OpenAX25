@@ -55,10 +55,6 @@
       <Project>{58FCBE2E-2F76-42A2-B054-81C779C5F933}</Project>
       <Name>OpenAX25-Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\OpenAX25-Protocol\OpenAX25-Protocol.csproj">
-      <Project>{2BEB5660-44F9-4865-AC8F-3CA7D0C7ABAD}</Project>
-      <Name>OpenAX25-Protocol</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="OpenAX25Routes.xml">

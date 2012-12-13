@@ -115,19 +115,6 @@ namespace OpenAX25Contracts
 		/// Frame data.
 		/// </param>
         UInt64 ForwardFrame(L2Frame frame);
-
-		/// <summary>
-		/// Try to cancel a frame that enqueued earlier with ForwardFrame.
-		/// </summary>
-		/// <returns>
-		/// <c>true</c> when forwarding of the frame with number 'frameNo' could be
-		/// cancelled; otherwise, <c>false</c>.
-		/// </returns>
-		/// <param name='frameNo'>
-		/// The number of the frame that shall be cancelled.
-		/// </param>
-		bool CancelFrame(UInt64 frameNo);
-
 	}
 }
 

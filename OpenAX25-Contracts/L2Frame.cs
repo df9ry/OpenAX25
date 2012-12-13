@@ -48,13 +48,13 @@ namespace OpenAX25Contracts
 			this.data = data;
 			if (data == null)
 				throw new ArgumentNullException("data");
-			this.addr = (properties == null)?(new Dictionary<string,string>()):properties;
+			this.properties = (properties == null)?(new Dictionary<string,string>()):properties;
 		}
 		
 		/// <summary>
 		/// Address information for this frame.
 		/// </summary>
-		public readonly IDictionary<string,string> addr;
+		public readonly IDictionary<string,string> properties;
 
 		/// <summary>
 		/// Frame number.

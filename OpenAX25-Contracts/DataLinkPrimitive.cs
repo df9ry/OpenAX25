@@ -95,37 +95,12 @@ namespace OpenAX25Contracts
     /// </summary>
     public sealed class DL_CONNECT_Request : DataLinkPrimitive
     {
-        private readonly AX25Modulo m_modulo;
-        private readonly string m_remoteAddr;
-
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="remoteAddr">Address of the remote station.</param>
-        /// <param name="modulo">AX.25 Modulo format.</param>
-        public DL_CONNECT_Request(string remoteAddr, AX25Modulo modulo = AX25Modulo.MOD8)
+        public DL_CONNECT_Request()
             : base()
         {
-            if (remoteAddr == null)
-                throw new ArgumentNullException("remoteAddr");
-            m_remoteAddr = remoteAddr;
-            if (modulo == AX25Modulo.UNSPECIFIED)
-                modulo = AX25Modulo.MOD8;
-            m_modulo = modulo;
-        }
-
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="remoteAddr">Address of the remote station.</param>
-        /// <param name="version">AX.25 Version.</param>
-        public DL_CONNECT_Request(string remoteAddr, AX25Version version)
-            : base()
-        {
-            if (remoteAddr == null)
-                throw new ArgumentNullException("remoteAddr");
-            m_remoteAddr = remoteAddr;
-            m_modulo = (version == AX25Version.V2_0) ? AX25Modulo.MOD8 : AX25Modulo.MOD128;
         }
 
         /// <summary>
@@ -133,42 +108,9 @@ namespace OpenAX25Contracts
         /// </summary>
         public override DataLinkPrimitive_T DataLinkPrimitiveType
         {
-            get {
+            get
+            {
                 return DataLinkPrimitive_T.DL_CONNECT_Request_T;
-            }
-        }
-
-        /// <summary>
-        /// Get remote address.
-        /// </summary>
-        public string RemoteAddr
-        {
-            get
-            {
-                return m_remoteAddr;
-            }
-        }
-
-        /// <summary>
-        /// Get AX.25 Modulo format.
-        /// </summary>
-        public AX25Modulo Modulo
-        {
-            get
-            {
-                return m_modulo;
-            }
-        }
-
-        /// <summary>
-        /// Get AX.25 Version.
-        /// </summary>
-        public AX25Version Version
-        {
-            get {
-                return (m_modulo == AX25Modulo.MOD128)?
-                    AX25Version.V2_2:
-                    AX25Version.V2_0;
             }
         }
     }
@@ -264,8 +206,7 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Constructor.
         /// </summary>
-        public DL_CONNECT_Confirm()
-            : base()
+        public DL_CONNECT_Confirm() : base()
         {
         }
 
@@ -289,8 +230,7 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Constructor.
         /// </summary>
-        public DL_DISCONNECT_Request()
-            : base()
+        public DL_DISCONNECT_Request() : base()
         {
         }
 
@@ -314,8 +254,7 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Constructor.
         /// </summary>
-        public DL_DISCONNECT_Indication()
-            : base()
+        public DL_DISCONNECT_Indication() : base()
         {
         }
 
@@ -339,8 +278,7 @@ namespace OpenAX25Contracts
         /// <summary>
         /// Constructor.
         /// </summary>
-        public DL_DISCONNECT_Confirm()
-            : base()
+        public DL_DISCONNECT_Confirm() : base()
         {
         }
 

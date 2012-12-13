@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading;
 using OpenAX25Contracts;
 using OpenAX25Core;
+using System.Collections.Generic;
 
 namespace OpenAX25_Console
 {
@@ -21,14 +22,13 @@ namespace OpenAX25_Console
         private volatile SessionState m_state = SessionState.DISCONNECTED;
         private volatile bool m_active = false;
         private Object m_stateLock = new Object();
-        private IL3Channel m_tx = null;
         private bool m_control = false;
         private bool m_suppress_go_ahead = false;
         private bool m_transmit_binary = false;
         private bool m_receive_binary = false;
 
         internal Session(ConsoleChannel channel, Socket socket)
-            : base(channel.Properties, null, true)
+            : base(GetProperties(channel.Properties), null, true)
         {
             m_channel = channel;
             m_socket = socket;
@@ -47,13 +47,13 @@ namespace OpenAX25_Console
                         return;
                     m_runtime.Log(LogLevel.INFO, m_channel.Name, "Open session: " + m_id);
                     base.Open();
-                    m_tx = m_channel.m_localEndpoint.Bind(this, Properties, String.Format("Console({0})", m_id));
-                    if (m_tx == null)
+                    m_target = m_channel.m_localEndpoint.Bind(this, Properties, String.Format("Console({0})", m_id));
+                    if (m_target == null)
                         throw new Exception("Unable to bind");
                     m_buffer2size = 0;
                     m_state = SessionState.WAIT_FOR_CONNECT;
                     m_active = true;
-                    m_tx.Send(new DL_CONNECT_Request(m_channel.m_remoteAddr, AX25Version.V2_0));
+                    m_target.Send(new DL_CONNECT_Request());
                     while (m_state == SessionState.WAIT_FOR_CONNECT)
                         Monitor.Wait(m_stateLock);
                     if (m_state != SessionState.CONNECTED)
@@ -88,11 +88,11 @@ namespace OpenAX25_Console
                 lock (m_stateLock)
                 {
                     m_active = false;
-                    if ((m_tx != null) && (m_state != SessionState.DISCONNECTED))
+                    if ((m_target != null) && (m_state != SessionState.DISCONNECTED))
                     {
-                        m_tx.Send(new DL_DISCONNECT_Request());
-                        m_channel.m_localEndpoint.Unbind(m_tx);
-                        m_tx = null;
+                        m_target.Send(new DL_DISCONNECT_Request());
+                        m_channel.m_localEndpoint.Unbind(m_target);
+                        m_target = null;
                     }
                     m_state = SessionState.DISCONNECTED;
                 }
@@ -101,18 +101,20 @@ namespace OpenAX25_Console
             catch (Exception e)
             {
                 m_runtime.Log(LogLevel.ERROR,
-                    "TCPServer session " + m_id, "Spurious exceptionin \"Close()\": " + e.Message);
+                    "Console session " + m_id, "Spurious exceptionin \"Close()\": " + e.Message);
             }
         }
 
         internal bool ReceiveFromLocal(int nReceived)
         {
+            /*
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
             {
                 byte[] data = new byte[nReceived];
                 m_runtime.Log(LogLevel.DEBUG, m_channel.Name,
                     "Received on channel " + m_id + ": " + HexConverter.ToHexString(data, true));
             }
+            */
 
             try
             {
@@ -375,13 +377,16 @@ namespace OpenAX25_Console
             } // end switch //
         }
 
-        protected override void Input(DataLinkPrimitive p, bool expedited)
+        protected override void Input(IPrimitive _p, bool expedited)
         {
             if (!m_active)
                 return;
             bool close = false;
             lock (m_stateLock)
             {
+                if (!(_p is DataLinkPrimitive))
+                    throw new Exception("Expected DataLinkPrimitive. Was: " + _p.GetType().Name);
+                DataLinkPrimitive p = (DataLinkPrimitive)_p;
                 switch (p.DataLinkPrimitiveType)
                 {
                     case DataLinkPrimitive_T.DL_CONNECT_Confirm_T :
@@ -510,17 +515,26 @@ namespace OpenAX25_Console
                         byte[] frame = new byte[length];
                         frame[0] = 0xF0; //  No L3 protocol.
                         Array.Copy(data, 1, frame, 1, length - 1);
-                        m_tx.Send(new DL_UNIT_DATA_Request(frame));
+                        m_target.Send(new DL_UNIT_DATA_Request(frame));
                     }
                     else
                     {
                         byte[] frame = new byte[length+1];
                         frame[0] = 0xF0; //  No L3 protocol.
                         Array.Copy(data, 0, frame, 1, length);
-                        m_tx.Send(new DL_DATA_Request(frame));
+                        m_target.Send(new DL_DATA_Request(frame));
                     }
                 }
             }
+        }
+
+        private static IDictionary<string, string> GetProperties(IDictionary<string, string> properties)
+        {
+            IDictionary<string, string> _properties = (properties == null) ?
+                new Dictionary<string, string>() :
+                new Dictionary<string, string>(properties);
+            _properties.Remove("Target");
+            return _properties;
         }
 
     }

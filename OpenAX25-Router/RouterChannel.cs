@@ -24,12 +24,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Xml;
 using System.Xml.Schema;
 using OpenAX25Contracts;
 using OpenAX25Core;
-using System.Text;
-using OpenAX25_Protocol;
 
 namespace OpenAX25Router
 {
@@ -128,8 +127,8 @@ namespace OpenAX25Router
     	protected override void OnForward(L2Frame frame)
     	{
     		// Perform routing:
-            L2Header header = new L2Header(frame.data);
-            string targetCall = header.nextHop.ToString();
+            AX25Header header = new AX25Header(frame.data);
+            string targetCall = header.NextHop.ToString();
             IL2Channel targetChannel = null;
             IDictionary<string,string> targetProperties = null;
             foreach (Route r in m_routes)
@@ -144,7 +143,7 @@ namespace OpenAX25Router
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
                 {
                     string text = String.Format("# {0}({1}) [{2}-->{3}]: {4}", header.ToString(),
-                        frame.no, header.nextHop.ToString(), targetChannel.Name,
+                        frame.no, header.NextHop.ToString(), targetChannel.Name,
                         HexConverter.ToHexString(frame.data, true)
                     );
                     m_runtime.Log(LogLevel.DEBUG, m_name, text);
@@ -158,7 +157,7 @@ namespace OpenAX25Router
                 if (m_runtime.LogLevel >= LogLevel.WARNING)
                 {
                     string text = String.Format("# {0}({1}) [{1}--><NoRoute>]: {2}", header.ToString(),
-                        frame.no, header.nextHop.ToString(), HexConverter.ToHexString(frame.data, true));
+                        frame.no, header.NextHop.ToString(), HexConverter.ToHexString(frame.data, true));
                     m_runtime.Log(LogLevel.WARNING, m_name, text);
                 }
             }

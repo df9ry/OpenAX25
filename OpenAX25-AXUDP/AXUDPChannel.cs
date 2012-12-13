@@ -127,11 +127,11 @@ namespace OpenAX25AXUDP
 					{
 						// Get destination properties, if any:
 						string host;
-						if (!frame.addr.TryGetValue("Host", out host))
+						if (!frame.properties.TryGetValue("Host", out host))
 							host = m_host;
 						int port;
 						string _port;
-						if (frame.addr.TryGetValue("Port", out _port)) {
+						if (frame.properties.TryGetValue("Port", out _port)) {
 							try {
 								port = Int32.Parse(_port);
 							} catch (Exception ex) {
@@ -250,9 +250,9 @@ namespace OpenAX25AXUDP
 			}
 			// All right, this is a package we can consider:
 			L2Frame frame = new L2Frame(m_runtime.NewFrameNo(), false, data);
-			frame.addr.Add("Channel", m_name);
-			frame.addr.Add("Host", remote_host);
-			frame.addr.Add("Port", String.Format("{0}", remote_port));
+			frame.properties.Add("Channel", m_name);
+			frame.properties.Add("Host", remote_host);
+			frame.properties.Add("Port", String.Format("{0}", remote_port));
 			OnReceive(frame);
 		}
 		

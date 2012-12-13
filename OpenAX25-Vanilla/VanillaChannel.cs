@@ -29,7 +29,7 @@ using OpenAX25Contracts;
 
 namespace OpenAX25_Vanilla
 {
-    public sealed class VanillaChannel : Channel, IL3Channel, IL3DataLinkProvider, IDisposable
+    public sealed class VanillaChannel : Channel, IL3DataLinkProvider, IDisposable
     {
 
         private readonly IL3DataLinkProvider m_target;
@@ -52,7 +52,7 @@ namespace OpenAX25_Vanilla
             string _target;
             if (!properties.TryGetValue("Target", out _target))
                 _target = "PROTO";
-            IL3Channel target  = m_runtime.LookupL3Channel(_target);
+            IChannel target  = m_runtime.LookupChannel(_target);
             if (target == null)
                 throw new InvalidPropertyException("Target not found: " + _target);
             if (!(target is IL3DataLinkProvider))
@@ -80,21 +80,6 @@ namespace OpenAX25_Vanilla
         public void UnregisterLocalEndpoint(ILocalEndpoint endpoint)
         {
             m_target.UnregisterLocalEndpoint(endpoint);            
-        }
-
-        /// <summary>
-        /// Get or set the target channel.
-        /// </summary>
-        public IL3Channel L3Target { get { return (IL3Channel)m_target; } set { } }
-
-        /// <summary>
-        /// Send a primitive over the channel.
-        /// </summary>
-        /// <param name="message">The primitive to send.</param>
-        /// <param name="expedited">Send expedited if set.</param>
-        public void Send(DataLinkPrimitive message, bool expedited = false)
-        {
-            throw new Exception("Unable to send directly to a datalink provider channel");
         }
 
         /// <summary>
