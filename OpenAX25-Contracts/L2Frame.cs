@@ -79,6 +79,16 @@ namespace OpenAX25Contracts
 		{
 			return (Empty.GetHashCode() == this.GetHashCode());
 		}
+
+        /// <summary>
+        /// Return a description of thia object.
+        /// </summary>
+        /// <returns>Description of this object</returns>
+        public override string ToString()
+        {
+            return String.Format("L2Frame(No={0},Priority={1}) {2} octets",
+                no, isPriorityFrame, data.Length);
+        }
 		
 		/// <summary>
 		/// Test is the frame is the empty one.

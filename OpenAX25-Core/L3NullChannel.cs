@@ -22,17 +22,18 @@
 
 using System.Collections.Generic;
 using OpenAX25Contracts;
+using System;
 
 namespace OpenAX25Core
 {
     /// <summary>
     /// The dummy channel.
     /// </summary>
-    class L3NullChannel : IL3Channel
+    public class L3NullChannel : IL3Channel
     {
 		private IDictionary<string,string> m_properties = new Dictionary<string,string>();
 		
-		internal L3NullChannel()
+		private L3NullChannel()
 		{
 			m_properties.Add("Name", Name);
 		}
@@ -80,6 +81,28 @@ namespace OpenAX25Core
         /// Send message over the channel.
         /// </summary>
         public void Send(IPrimitive _1, bool _2) {}
+
+        private static IL3Channel instance = null;
+        private static Object instanceLock = new Object();
+
+        /// <summary>
+        /// The one and only instance.
+        /// </summary>
+        public static IL3Channel Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    lock (instanceLock)
+                    {
+                        if (instance == null)
+                            instance = new L3NullChannel();
+                    }
+                }
+                return instance;
+            }
+        }
 
     }
 }

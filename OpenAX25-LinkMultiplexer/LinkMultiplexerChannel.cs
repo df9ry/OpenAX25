@@ -34,7 +34,7 @@ using OpenAX25Core;
 namespace OpenAX25_LinkMultiplexer
 {
     public sealed class LinkMultiplexerChannel :
-        IL3Channel, IL3DataLinkProvider
+        L3Channel, IL3DataLinkProvider
     {
 
         // States:
@@ -96,10 +96,6 @@ namespace OpenAX25_LinkMultiplexer
         private ISet<Guid> ServedList = new HashSet<Guid>();
 
         // Internal fields:
-        private readonly Runtime m_runtime;
-        private readonly string m_name;
-        private readonly IDictionary<string, string> m_properties;
-        private readonly IL3Channel m_target;
         private readonly IL3DataLinkProvider m_dataLinkProvider;
         private readonly Regex m_digipeat;
 
@@ -126,25 +122,12 @@ namespace OpenAX25_LinkMultiplexer
         /// </list>
 		/// </param>
         public LinkMultiplexerChannel(IDictionary<string, string> properties)
+            : base(properties)
 		{
-            m_runtime = Runtime.Instance;
-            m_properties = (properties == null) ?
-                new Dictionary<string, string>() : new Dictionary<string, string>(properties);
             string _val;
-            if (!m_properties.TryGetValue("Name", out _val))
-                _val = "LMPX";
-            m_name = _val;
-            if (!m_properties.TryGetValue("Target", out _val))
-                _val = "DPXPH";
-            IChannel target = m_runtime.LookupChannel(_val);
-            if (target == null)
-                throw new Exception("target not found: " + _val);
-            if (!(target is IL3Channel))
-                throw new Exception("target is not a layer3 channel: " + _val);
-            m_target = (IL3Channel)target;
-            if (!(target is IL3DataLinkProvider))
-                throw new Exception("target is not a datalink provider: " + _val);
-            m_dataLinkProvider = (IL3DataLinkProvider)target;
+            if (!(m_target is IL3DataLinkProvider))
+                throw new Exception("Target is not a datalink provider: " + m_target.Name);
+            m_dataLinkProvider = (IL3DataLinkProvider)m_target;
             if (!m_properties.TryGetValue("Digi", out _val))
                 _val = "^$";
             m_digipeat = new Regex(_val);
@@ -152,33 +135,15 @@ namespace OpenAX25_LinkMultiplexer
         }
 
         /// <summary>
-        /// Gets the name of the channel. This name have to be unique accross the
-        /// application and can never change. There is no interpretion or syntax check
-        /// performed.
-        /// </summary>
-        /// <value>
-        /// The unique name of this channel.
-        /// </value>
-        public string Name { get { return m_name; } }
-
-        /// <summary>
-        /// Gets the properties of this channel.
-        /// </summary>
-        /// <value>
-        /// The properties.
-        /// </value>
-        public IDictionary<string, string> Properties { get { return m_properties; } }
-
-        /// <summary>
         /// Open the interface.
         /// </summary>
-        public void Open()
+        public override void Open()
         {
             lock (this)
             {
+                base.Open();
                 if (m_isOpen)
                     return;
-                m_runtime.Log(LogLevel.INFO, m_name, "Open Channel");
                 m_physicalLayerEndpoint = m_dataLinkProvider.RegisterLocalEndpoint(m_name, m_properties);
                 if (m_physicalLayerEndpoint == null)
                     throw new Exception("Unable to register the local endpoint for physical layer");
@@ -188,7 +153,7 @@ namespace OpenAX25_LinkMultiplexer
                 m_isOpen = true;
                 m_state = State_T.Idle;
                 m_waitForSeizeFlag = false;
-                m_thread = new Thread(new ThreadStart(Run));
+                m_thread = new Thread(new ThreadStart(Run2));
                 m_thread.Start();
             } // end lock //
         }
@@ -196,13 +161,12 @@ namespace OpenAX25_LinkMultiplexer
         /// <summary>
         /// Close the interface.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             lock (this)
             {
                 if (!m_isOpen)
                     return;
-                m_runtime.Log(LogLevel.INFO, m_name, "Close Channel");
                 try
                 {
                     if (m_physicalLayerEndpoint != null)
@@ -225,6 +189,7 @@ namespace OpenAX25_LinkMultiplexer
                     m_isOpen = false;
                     m_thread = null;
                 }
+                base.Close();
             } // end lock //
         }
 
@@ -232,30 +197,24 @@ namespace OpenAX25_LinkMultiplexer
         /// Resets the channel. The data link is closed and reopened. All pending
         /// data is withdrawn.
         /// </summary>
-        public void Reset()
+        public override void Reset()
         {
             lock (this)
             {
-                Close();
+                base.Reset();
                 AwaitingQueue.Clear();
                 CurrentQueue.Clear();
                 ServedQueue.Clear();
                 ServedList.Clear();
-                Open();
             } // end lock //
         }
-
-        /// <summary>
-        /// Get or set the target channel.
-        /// </summary>
-        public IL3Channel L3Target { get { return m_target; } }
 
         /// <summary>
         /// Receive a primitive from the physical layer.
         /// </summary>
         /// <param name="message">The primitive to send.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public void Send(IPrimitive message, bool expedited)
+        protected override void Input(IPrimitive message, bool expedited)
         {
             if (message == null)
                 throw new ArgumentNullException("message");
@@ -341,19 +300,19 @@ namespace OpenAX25_LinkMultiplexer
                 if ((m_currentSession != null) && (m_currentSession.m_id == clientSession.m_id))
                 {
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Queue(Current):" + lmp.LinkMultiplexerPrimitiveTypeName);
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "QU (Current):" + lmp.LinkMultiplexerPrimitiveTypeName);
                     CurrentQueue.Enqueue(new LinkMultiplexerPrimitiveEntry(clientSession, lmp, expedited));
                 }
                 else if (ServedList.Contains(clientSession.m_id))
                 {
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Queue(Served):" + lmp.LinkMultiplexerPrimitiveTypeName);
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "QU (Served):" + lmp.LinkMultiplexerPrimitiveTypeName);
                     ServedQueue.Enqueue(new LinkMultiplexerPrimitiveEntry(clientSession, lmp, expedited));
                 }
                 else
                 {
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Queue(Awaiting):" + lmp.LinkMultiplexerPrimitiveTypeName);
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "QU (Awaiting):" + lmp.LinkMultiplexerPrimitiveTypeName);
                     AwaitingQueue.Enqueue(new LinkMultiplexerPrimitiveEntry(clientSession, lmp, expedited));
                 }
             } // end lock //
@@ -366,7 +325,7 @@ namespace OpenAX25_LinkMultiplexer
         private void OnIdle(LinkMultiplexerPrimitive lmp, bool expedited, ClientSession session)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Recv(OnIdle):" + lmp.LinkMultiplexerPrimitiveTypeName);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX (OnIdle) : " + lmp.LinkMultiplexerPrimitiveTypeName);
             switch (lmp.LinkMultiplexerPrimitiveType)
             {
                 case LinkMultiplexerPrimitive_T.LM_DATA_Request_T :
@@ -384,7 +343,7 @@ namespace OpenAX25_LinkMultiplexer
                     AwaitingQueue = q;
                     State = State_T.SeizePending;
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnIdle):PH_SEIZE_Request");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnIdle) : PH_SEIZE_Request");
                     m_physicalLayerChannel.Send(new PH_SEIZE_Request());
                     break;
                 case LinkMultiplexerPrimitive_T.LM_RELEASE_Request_T :
@@ -392,7 +351,7 @@ namespace OpenAX25_LinkMultiplexer
                     break;
                 case LinkMultiplexerPrimitive_T.LM_EXPEDITED_DATA_Request_T :
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnIdle):PH_EXPEDITED_DATA_Request");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnIdle) : PH_EXPEDITED_DATA_Request");
                     m_physicalLayerChannel.Send(new PH_EXPEDITED_DATA_Request(
                         ((LM_EXPEDITED_DATA_Request)lmp).Frame));
                     State = State_T.Idle;
@@ -411,7 +370,7 @@ namespace OpenAX25_LinkMultiplexer
             if (lmp.LinkMultiplexerPrimitiveType == LinkMultiplexerPrimitive_T.LM_EXPEDITED_DATA_Request_T)
             {
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnSeizePending):PH_EXPEDITED_DATA_Request");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnSeizePending) : PH_EXPEDITED_DATA_Request");
                 m_physicalLayerChannel.Send(new PH_EXPEDITED_DATA_Request(
                     ((LM_EXPEDITED_DATA_Request)lmp).Frame));
                 State = State_T.SeizePending;
@@ -451,7 +410,7 @@ namespace OpenAX25_LinkMultiplexer
             if (lmp.LinkMultiplexerPrimitiveType == LinkMultiplexerPrimitive_T.LM_EXPEDITED_DATA_Request_T)
             {
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnSeized):PH_EXPEDITED_DATA_Request");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnSeized) : PH_EXPEDITED_DATA_Request");
                 m_physicalLayerChannel.Send(new PH_EXPEDITED_DATA_Request(
                     ((LM_EXPEDITED_DATA_Request)lmp).Frame));
                 State = State_T.Seized;
@@ -467,13 +426,13 @@ namespace OpenAX25_LinkMultiplexer
             {
                 case LinkMultiplexerPrimitive_T.LM_DATA_Request_T :
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnSeized):PH_DATA_Request");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnSeized) : PH_DATA_Request");
                     m_physicalLayerChannel.Send(new PH_DATA_Request(((LM_DATA_Request)lmp).Frame));
                     State = State_T.Seized;
                     break;
                 case LinkMultiplexerPrimitive_T.LM_SEIZE_Request_T :
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnSeized):LM_SEIZE_Confirm");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnSeized) : LM_SEIZE_Confirm");
                     session.SendToPeer(new LM_SEIZE_Confirm(), expedited);
                     State = State_T.Seized;
                     break;
@@ -493,12 +452,12 @@ namespace OpenAX25_LinkMultiplexer
             if (m_currentSession == null)
                 throw new ArgumentNullException("m_currentSession");
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Recv(OnSeizePending):" + plp.PhysicalLayerPrimitiveTypeName);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX (OnSeizePending) : " + plp.PhysicalLayerPrimitiveTypeName);
             switch (plp.PhysicalLayerPrimitiveType)
             {
                 case PhysicalLayerPrimitive_T.PH_SEIZE_Confirm_T:
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnSeizePending):LM_SEIZE_Confirm");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnSeizePending) : LM_SEIZE_Confirm");
                     m_currentSession.SendToPeer(new LM_SEIZE_Confirm(), expedited);
                     State = State_T.Seized;
                     break;
@@ -524,7 +483,7 @@ namespace OpenAX25_LinkMultiplexer
             if (m_currentSession == null)
                 throw new ArgumentNullException("m_currentSession");
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Recv(OnSeized):" + plp.PhysicalLayerPrimitiveTypeName);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX (OnSeized) : " + plp.PhysicalLayerPrimitiveTypeName);
             switch (plp.PhysicalLayerPrimitiveType)
             {
                 case PhysicalLayerPrimitive_T.PH_SEIZE_Confirm_T:
@@ -550,12 +509,12 @@ namespace OpenAX25_LinkMultiplexer
         private void OnIdle(PhysicalLayerPrimitive plp, bool expedited)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Recv(OnIdle):" + plp.PhysicalLayerPrimitiveTypeName);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX (OnIdle) : " + plp.PhysicalLayerPrimitiveTypeName);
             switch (plp.PhysicalLayerPrimitiveType)
             {
                 case PhysicalLayerPrimitive_T.PH_SEIZE_Confirm_T :
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(OnIdle):PH_RELEASE_Request");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (OnIdle) : PH_RELEASE_Request");
                     m_physicalLayerChannel.Send(new PH_RELEASE_Request());
                     State = State_T.Idle;
                     break;
@@ -579,7 +538,7 @@ namespace OpenAX25_LinkMultiplexer
         private void SendToAllSessions(IPrimitive message, bool expedited)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(SendToAllSessions):" + message.GetType().Name);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX (SendToAllSessions) : " + message.GetType().Name);
             foreach (ClientEndpoint ce in m_clientEndpoints.Values)
             {
                 foreach (ClientSession cs in ce.m_sessions.Values)
@@ -595,7 +554,7 @@ namespace OpenAX25_LinkMultiplexer
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
                 m_runtime.Log(LogLevel.DEBUG, m_name,
-                    "=Send(FinishCurrentTransmission):PH_RELEASE_Request");
+                    "TX (FinishCurrentTransmission) : PH_RELEASE_Request");
             m_physicalLayerChannel.Send(new PH_RELEASE_Request());
             while (CurrentQueue.Count > 0)
                 ServedQueue.Enqueue(CurrentQueue.Dequeue());
@@ -617,7 +576,7 @@ namespace OpenAX25_LinkMultiplexer
                 }
                 header.Digipeat();
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(Digipeat):PH_EXPEDITED_DATA_Request");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (Digipeat) : PH_EXPEDITED_DATA_Request");
                 m_physicalLayerChannel.Send(new PH_EXPEDITED_DATA_Request(di.Frame), true);
                 return;
             }
@@ -637,16 +596,16 @@ namespace OpenAX25_LinkMultiplexer
                 return;
             }
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Send(Data):LM_DATA_Request");
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX (Data) : LM_DATA_Indication");
             session.SendToPeer(new LM_DATA_Indication(di.Frame), false);
         }
 
         /// <summary>
         /// Thread routine.
         /// </summary>
-        private void Run()
+        private void Run2()
         {
-            m_runtime.Log(LogLevel.INFO, m_name, "Consumer thread started");
+            m_runtime.Log(LogLevel.INFO, m_name, "Queue thread started");
             while (true)
             {
                 try
@@ -699,7 +658,7 @@ namespace OpenAX25_LinkMultiplexer
                 }
                 catch (Exception e)
                 {
-                    m_runtime.Log(LogLevel.ERROR, m_name, "Exception in consumer thread: " + e.Message);
+                    m_runtime.Log(LogLevel.ERROR, m_name, "Exception in queue thread: " + e.Message);
                 }
             } // end while //
         }

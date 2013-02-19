@@ -301,8 +301,27 @@ namespace OpenAX25Core
 			this.m_txThread = null;
             base.Close();
         }
-		
-		/// <summary>
+
+        /// <summary>
+        /// Check if this is the null channel.
+        /// </summary>
+        /// <returns>True, if this is the null channel.</returns>
+        public bool IsNullChannel()
+        {
+            return IsNullChannel(this);
+        }
+
+        /// <summary>
+        /// Check if a channel is the null channel.
+        /// </summary>
+        /// <param name="ch">The channel to check.</param>
+        /// <returns>True, if ch is null or the null channel.</returns>
+        public static bool IsNullChannel(IL2Channel ch)
+        {
+            return ((ch == null) || (ch.GetHashCode() == L2NullChannel.Instance.GetHashCode()));
+        }
+
+        /// <summary>
 		/// This handler is executed in the transmit thread.
 		/// </summary>
 		protected void ForwardHandler()

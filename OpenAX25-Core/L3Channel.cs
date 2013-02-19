@@ -55,16 +55,24 @@ namespace OpenAX25Core
         /// <param name="alias">Name alias for better tracing [Default: Value of "Name"]</param>
         /// <param name="suppressRegistration">
         /// If set no registration in the runtime is performed (For proxies).</param>
+        /// <param name="target">If set, use this as the target of this object.</param>
         protected L3Channel(IDictionary<string, string> properties, string alias = null,
-            bool suppressRegistration = true)
+            bool suppressRegistration = true, IL3Channel target = null)
             : base(properties, alias, suppressRegistration)
 		{
-            string _target;
-            if (properties.TryGetValue("Target", out _target))
+            if (target == null)
             {
-                m_target = m_runtime.LookupL3Channel(_target);
-                if (m_target == null)
-                    throw new InvalidPropertyException("Target not found: " + _target);
+                string _target;
+                if (properties.TryGetValue("Target", out _target))
+                {
+                    m_target = m_runtime.LookupL3Channel(_target);
+                    if (m_target == null)
+                        throw new InvalidPropertyException("Target not found: " + _target);
+                }
+            }
+            else
+            {
+                m_target = target;
             }
 		}
 		
@@ -76,10 +84,6 @@ namespace OpenAX25Core
             get
             {
                 return this.m_target;
-            }
-            set
-            {
-                this.m_target = value;
             }
         }
 
@@ -151,6 +155,25 @@ namespace OpenAX25Core
             Close();
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Check if this is the null channel.
+        /// </summary>
+        /// <returns>True, if this is the null channel.</returns>
+        public bool IsNullChannel()
+        {
+            return IsNullChannel(this);
+        }
+
+        /// <summary>
+        /// Check if a channel is the null channel.
+        /// </summary>
+        /// <param name="ch">The channel to check.</param>
+        /// <returns>True, if ch is null or the null channel.</returns>
+        public static bool IsNullChannel(IL3Channel ch)
+        {
+            return ((ch == null) || (ch.GetHashCode() == L3NullChannel.Instance.GetHashCode()));
         }
 
         /// <summary>

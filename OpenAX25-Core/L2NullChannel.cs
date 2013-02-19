@@ -31,12 +31,12 @@ namespace OpenAX25Core
 	/// <summary>
 	/// The dummy channel.
 	/// </summary>
-	internal class L2NullChannel : IL2Channel
+	public class L2NullChannel : IL2Channel
 	{
 	
 		private IDictionary<string,string> m_properties = new Dictionary<string,string>();
 		
-		internal L2NullChannel()
+		private L2NullChannel()
 		{
 			m_properties.Add("Name", Name);
 		}
@@ -179,6 +179,27 @@ namespace OpenAX25Core
 			
 		}
 
+        private static IL2Channel instance = null;
+        private static Object instanceLock = new Object();
+
+        /// <summary>
+        /// The one and only instance.
+        /// </summary>
+        public static IL2Channel Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    lock (instanceLock)
+                    {
+                        if (instance == null)
+                            instance = new L2NullChannel();
+                    }
+                }
+                return instance;
+            }
+        }
 		
 	}
 }

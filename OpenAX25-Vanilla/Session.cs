@@ -7,17 +7,13 @@ using OpenAX25Core;
 
 namespace OpenAX25_Vanilla
 {
-    internal sealed class Session : IL3Channel, IDisposable
+    internal sealed class Session : L3Channel, IDisposable
     {
         private const string PROMPT = "\0\r\n> ";
         private const string ERROR = "\0Error: ";
         private const string NOT_FOUND = "\0Not found: ";
-        private readonly Runtime m_runtime = Runtime.Instance;
         private readonly LocalEndpoint m_localEndpoint;
         private readonly IL3Channel m_receiver;
-        private readonly string m_name;
-        private IDictionary<string, string> m_properties;
-        private IL3Channel m_target = null;
         private bool m_connected = false;
         private string m_remoteAddr = String.Empty;
         private string m_digis = String.Empty;
@@ -27,11 +23,12 @@ namespace OpenAX25_Vanilla
             new Dictionary<string, OnCommandHandler>();
 
         internal Session(LocalEndpoint localEndpoint, IL3Channel receiver)
+            : base(new Dictionary<string, string>(localEndpoint.m_channel.Properties),
+                localEndpoint.m_channel.Name + ":" +localEndpoint.Address + "/" +
+                receiver.Name, true, L3NullChannel.Instance)
         {
             m_localEndpoint = localEndpoint;
             m_receiver = receiver;
-            m_name = localEndpoint.Address + "/" + receiver.Name;
-            m_properties = m_localEndpoint.m_channel.Properties;
             m_cmdTbl.Add("help", new OnCommandHandler(OnHelp));
             m_cmdTbl.Add("h",    new OnCommandHandler(OnHelp));
             m_cmdTbl.Add("quit", new OnCommandHandler(OnQuit));
@@ -43,39 +40,23 @@ namespace OpenAX25_Vanilla
         }
 
         /// <summary>
-        /// Gets the name of the channel. This name have to be unique accross the
-        /// application and can never change. There is no interpretion or syntax check
-        /// performed.
-        /// </summary>
-        /// <value>
-        /// The unique name of this channel.
-        /// </value>
-        public string Name { get { return m_name; } }
-
-        /// <summary>
-        /// Gets the properties of this channel.
-        /// </summary>
-        /// <value>
-        /// The properties.
-        /// </value>
-        public IDictionary<string, string> Properties { get { return m_properties; } }
-
-        /// <summary>
         /// Open the interface.
         /// </summary>
-        public void Open()
+        public override void Open()
         {
-            if (m_target != null)
-                return;
+            base.Open();
         }
 
         /// <summary>
         /// Close the interface.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
+            base.Close();
             try
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_DISCONNECT_Indication");
                 m_receiver.Send(new DL_DISCONNECT_Indication());
             }
             catch (Exception e)
@@ -86,8 +67,9 @@ namespace OpenAX25_Vanilla
 
             try
             {
-                if (m_target != null)
-                    m_target.Send(new DL_DISCONNECT_Request(), true);
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (dn) : DL_DISCONNECT_Request");
+                m_target.Send(new DL_DISCONNECT_Request(), true);
             }
             catch (Exception e)
             {
@@ -97,7 +79,7 @@ namespace OpenAX25_Vanilla
 
             try
             {
-                if (m_target != null)
+                if (!L3Channel.IsNullChannel(m_target))
                     m_localEndpoint.m_targetLocalEndpoint.Unbind(m_target);
             }
             catch (Exception e)
@@ -106,25 +88,8 @@ namespace OpenAX25_Vanilla
                     m_localEndpoint.Address, "Exception in close (Unbind): " + e.Message);
             }
 
-            m_target = null;
+            m_target = L3NullChannel.Instance;
             m_connected = false;
-        }
-
-        /// <summary>
-        /// Resets the channel. The data link is closed and reopened. All pending
-        /// data is withdrawn.
-        /// </summary>
-        public void Reset()
-        {
-            Close();
-            Open();
-        }
-
-        /// <summary>
-        /// Get or set the target channel.
-        /// </summary>
-        public IL3Channel L3Target {
-            get { return m_target; }
         }
 
         /// <summary>
@@ -132,8 +97,10 @@ namespace OpenAX25_Vanilla
         /// </summary>
         /// <param name="message">The primitive to send.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public void Send(IPrimitive _p, bool expedited = false)
+        protected override void Input(IPrimitive _p, bool expedited = false)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + _p.GetType().Name);
             if (!(_p is DataLinkPrimitive))
                 throw new Exception("Expected DataLinkPrimitive. Was: " + _p.GetType().Name);
             DataLinkPrimitive p = (DataLinkPrimitive)_p;
@@ -142,25 +109,39 @@ namespace OpenAX25_Vanilla
                 switch (p.DataLinkPrimitiveType)
                 {
                     case DataLinkPrimitive_T.DL_CONNECT_Request_T:
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_CONNECT_Confirm");
                         m_receiver.Send(new DL_CONNECT_Confirm());
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes(Greeting(m_receiver.Name))));
                         break;
                     case DataLinkPrimitive_T.DL_CONNECT_Confirm_T:
                     case DataLinkPrimitive_T.DL_CONNECT_Indication_T:
                         m_connected = true;
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes("\0*** Connected")));
                         break;
                     case DataLinkPrimitive_T.DL_DATA_Indication_T:
                     case DataLinkPrimitive_T.DL_UNIT_DATA_Indication_T:
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX(up) : " + p.DataLinkPrimitiveTypeName);
                         m_receiver.Send(p);
                         break;
                     case DataLinkPrimitive_T.DL_DATA_Request_T:
-                        if (m_connected && (m_target != null))
+                        if (m_connected && (!L3Channel.IsNullChannel(m_target)))
+                        {
+                            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                                m_runtime.Log(LogLevel.DEBUG, m_name, "TX (dn) : " + p.DataLinkPrimitiveTypeName);
                             m_target.Send(p);
+                        }
                         else
+                        {
                             ParseCommand(((DL_DATA_Request)p).Data, false);
+                        }
                         break;
                     case DataLinkPrimitive_T.DL_UNIT_DATA_Request_T:
                         ParseCommand(((DL_UNIT_DATA_Request)p).Data, false);
@@ -169,10 +150,14 @@ namespace OpenAX25_Vanilla
                     case DataLinkPrimitive_T.DL_DISCONNECT_Indication_T:
                         m_connected = false;
                         Unbind();
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes("\0*** Disconnected" + PROMPT)));
                         break;
                     case DataLinkPrimitive_T.DL_ERROR_Indication_T:
+                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                         m_receiver.Send(new DL_UNIT_DATA_Indication(
                             Encoding.UTF8.GetBytes("\0\r\n*** ERROR " +
                                 ((DL_ERROR_Indication)p).ErrorCode + " *** : " +
@@ -184,16 +169,6 @@ namespace OpenAX25_Vanilla
                         break;
                 } // end switch //
             }
-        }
-
-        /// <summary>
-        /// Dispose this object, when it is not longer needed.
-        /// </summary>
-        public void Dispose()
-        {
-            //Close();
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         private string Greeting(string name)
@@ -213,6 +188,8 @@ namespace OpenAX25_Vanilla
                 string[] args = cmd.Split(new char[]{' '}, StringSplitOptions.RemoveEmptyEntries);
                 if (args.Length == 0)
                 {
+                    if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                     m_receiver.Send(new DL_UNIT_DATA_Indication(
                         Encoding.UTF8.GetBytes(PROMPT)));
                     return;
@@ -222,6 +199,8 @@ namespace OpenAX25_Vanilla
                 m_cmdTbl.TryGetValue(args[0].ToLower(CultureInfo.InvariantCulture), out handler);
                 if (handler == null)
                 {
+                    if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                     m_receiver.Send(new DL_UNIT_DATA_Indication(
                         Encoding.UTF8.GetBytes(NOT_FOUND + args[0] + PROMPT)));
                     return;
@@ -230,6 +209,8 @@ namespace OpenAX25_Vanilla
             }
             catch (Exception e)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes(ERROR + e.Message + PROMPT)));
             }
@@ -237,6 +218,8 @@ namespace OpenAX25_Vanilla
 
         private void OnHelp(string[] args)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
             m_receiver.Send(new DL_UNIT_DATA_Indication(
                 Encoding.UTF8.GetBytes("\0" +
                     "\t\tconn [call] {via} {digis}\tConnect to call (with digis)\r\n" +
@@ -257,6 +240,8 @@ namespace OpenAX25_Vanilla
         {
             if (m_connected)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes(
                     "\0*** Already connected to " + m_remoteAddr + " ***\r\n")));
@@ -265,6 +250,8 @@ namespace OpenAX25_Vanilla
             // Make address string:
             if (args.Length < 2)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes(
                     ERROR + " *** Usage: 'connect [call] {via} {digis}' ***" + PROMPT)));
@@ -284,23 +271,32 @@ namespace OpenAX25_Vanilla
                     sb.Append(new L2Callsign(arg).ToString());
                 } // end for //
                 m_digis = sb.ToString();
-                if (m_target != null)
+                if (!L3Channel.IsNullChannel(m_target))
                     Unbind();
-                m_properties = new Dictionary<string, string>(m_properties);
-                if (m_properties.ContainsKey("RemoteAddr"))
-                    m_properties.Remove("RemoteAddr");
-                m_properties.Add("RemoteAddr", m_remoteAddr);
-                if (m_properties.ContainsKey("Route"))
-                    m_properties.Remove("Route");
-                m_properties.Add("Route", m_digis);
+                IDictionary<string, string> properties = new Dictionary<string, string>(m_properties);
+                if (properties.ContainsKey("RemoteAddr"))
+                    properties.Remove("RemoteAddr");
+                properties.Add("RemoteAddr", m_remoteAddr);
+                if (properties.ContainsKey("Route"))
+                    properties.Remove("Route");
+                properties.Add("Route", m_digis);
+                m_properties.Clear();
+                foreach (KeyValuePair<string, string> kvp in properties)
+                    m_properties.Add(kvp);
                 m_target = m_localEndpoint.m_targetLocalEndpoint.Bind(
                     this, m_properties, m_name + "/" + m_remoteAddr);
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes("\0*** Connecting to " + m_remoteAddr + " ...")));
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (dn) : DL_CONNECT_Request");
                 m_target.Send(new DL_CONNECT_Request());
             }
             catch (Exception e)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes("\0*** Error: " + e.Message + PROMPT)));
             }
@@ -308,8 +304,12 @@ namespace OpenAX25_Vanilla
 
         private void OnDisc(string[] args)
         {
-            if (m_target != null)
+            if (!L3Channel.IsNullChannel(m_target))
+            {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (dn) : DL_DISCONNECT_Request");
                 m_target.Send(new DL_DISCONNECT_Request());
+            }
             Unbind();
         }
 
@@ -317,11 +317,13 @@ namespace OpenAX25_Vanilla
         {
             try
             {
-                if (m_target != null)
+                if (!L3Channel.IsNullChannel(m_target))
                     m_localEndpoint.m_targetLocalEndpoint.Unbind(m_target);
             }
             catch (Exception e)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX (up) : DL_UNIT_DATA_Indication");
                 m_receiver.Send(new DL_UNIT_DATA_Indication(
                     Encoding.UTF8.GetBytes(
                         "\0*** Error unbinding from " + m_remoteAddr + " via " + m_digis + "\r\n" +
@@ -329,11 +331,13 @@ namespace OpenAX25_Vanilla
             }
             finally
             {
-                m_target = null;
+                m_target = L3NullChannel.Instance;
                 m_connected = false;
                 m_remoteAddr = String.Empty;
                 m_digis = String.Empty;
-                m_properties = m_localEndpoint.m_channel.Properties;
+                m_properties.Clear();
+                foreach (KeyValuePair<string, string> kvp in m_localEndpoint.m_channel.Properties)
+                    m_properties.Add(kvp);
             }
         }
 
@@ -341,8 +345,9 @@ namespace OpenAX25_Vanilla
         /// Local dispose.
         /// </summary>
         /// <param name="intern">Set to <c>true</c> when calling from user code.</param>
-        private void Dispose(bool intern)
+        protected override void Dispose(bool intern)
         {
+            base.Dispose(intern);
         }
 
     }

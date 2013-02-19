@@ -82,8 +82,8 @@ namespace OpenAX25Core
 		/// </summary>
 		public Runtime()
 		{
-            RegisterChannel(new L2NullChannel());
-            RegisterChannel(new L3NullChannel());
+            RegisterChannel(L2NullChannel.Instance);
+            RegisterChannel(L3NullChannel.Instance);
         }
 		
 		/// <summary>
@@ -160,7 +160,7 @@ namespace OpenAX25Core
 			if (String.IsNullOrEmpty(message))
 				message = "<null>";
 			lock(this) {
-				try { m_logProvider.OnLog(component, message); } catch {}
+				try { m_logProvider.OnLog(component, level + ": " + message); } catch {}
 			}
 		}
 		

@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Threading;
 using OpenAX25Contracts;
 using OpenAX25Core;
+using System.Collections.Concurrent;
 
 namespace OpenAX25_DuplexPhysicalLayer
 {
@@ -174,6 +175,20 @@ namespace OpenAX25_DuplexPhysicalLayer
         }
 
         /// <summary>
+        /// Reset the channel and withdraw all frames in the
+        /// receiver and transmitter queue.
+        /// </summary>
+        public override void Reset()
+        {
+            lock (this)
+            {
+                base.Reset();
+                while (m_queue.Count > 0)
+                    m_queue.Take();
+            }
+        }
+
+        /// <summary>
         /// Open the channel, so that data actually be transmitted and received.
         /// </summary>
         public override void Open()
@@ -186,6 +201,10 @@ namespace OpenAX25_DuplexPhysicalLayer
                 TransmitterState = TransmitterState_T.TransmitterReady;
                 IsOpen = true;
                 base.Open();
+                if (m_thread != null) // Already open.
+                    return;
+                m_thread = new Thread(new ThreadStart(Run));
+                m_thread.Start();
             }
         }
 
@@ -203,7 +222,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                 if (ReceiverState == ReceiverState_T.Receiving)
                 {
                     if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_QUIET_Indication");
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_QUIET_Indication");
                     if (UpperEndpoint != null)
                         UpperEndpoint.Send(new PH_QUIET_Indication());
                     ReceiverState = ReceiverState_T.ReceiverReady;
@@ -214,6 +233,10 @@ namespace OpenAX25_DuplexPhysicalLayer
                 T107seq = T107.Stop();
                 Interrupted = true;
                 IsOpen = false;
+                if (m_thread == null) // Already closed.
+                    return;
+                m_thread.Abort();
+                m_thread = null;
             }
         }
 
@@ -331,9 +354,8 @@ namespace OpenAX25_DuplexPhysicalLayer
         public IL3Channel L3Target {
             get
             {
-                return m_runtime.LookupL3Channel("L3NULL");
+                return L3NullChannel.Instance;
             }
-            set {}
         }
         
         /// <summary>
@@ -345,17 +367,21 @@ namespace OpenAX25_DuplexPhysicalLayer
             lock (this)
             {
                 if (!IsOpen)
+                {
+                    m_runtime.Log(LogLevel.WARNING, m_name, "OnForward (Channel closed) :"
+                        + frame.ToString());
                     return;
+                }
                 switch (ReceiverState)
                 {
-                    case ReceiverState_T.ReceiverReady :
+                    case ReceiverState_T.ReceiverReady:
                         OnReceiverReady(frame);
                         break;
-                    case ReceiverState_T.Receiving :
+                    case ReceiverState_T.Receiving:
                         OnReceiving(frame);
                         break;
                 } // end switch //
-            }
+            } // end lock //
         }
 
         private void OnReceiving(L2Frame frame)
@@ -363,29 +389,28 @@ namespace OpenAX25_DuplexPhysicalLayer
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
             {
                 string text = String.Format(
-                    "OnReceiving({0}) NO={1}",
+                    "RX (OnReceiving) : {0} NO={1}",
                     HexConverter.ToHexString(frame.data, true), frame.no);
                 m_runtime.Log(LogLevel.DEBUG, m_name, text);
             }
 
-            lock (this)
+            T091seq = T091.Stop();
+            IL3Channel ep = UpperEndpoint; // Save pointer for later access
+            if (ep != null)
             {
-                T091seq = T091.Stop();
-                if (UpperEndpoint != null)
-                {
-                    AX25Frame f = new AX25Frame(frame.data, Modulo);
-                    if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_DATA_Indication: "
-                            + f.ToString());
-                    PH_DATA_Indication di = new PH_DATA_Indication(f);
-                    UpperEndpoint.Send(di);
-                }
-                else
-                {
-                    m_runtime.Log(LogLevel.ERROR, m_name, "!!! UpperEndpoint is null");
-                }
-                T091seq = T091.Start(T091_V);
+                AX25Frame f = new AX25Frame(frame.data, Modulo);
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_DATA_Indication: "
+                        + f.ToString());
+                PH_DATA_Indication di = new PH_DATA_Indication(f);
+                ep.Send(di);
             }
+            else
+            {
+                m_runtime.Log(LogLevel.ERROR, m_name, "!!! UpperEndpoint is null");
+            }
+            T091seq = T091.Start(T091_V);
+
             ReceiverState = ReceiverState_T.Receiving;
         }
 
@@ -394,7 +419,7 @@ namespace OpenAX25_DuplexPhysicalLayer
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
             {
                 string text = String.Format(
-                    "OnReceiverReady({0}) NO={1}",
+                    "RX (OnReceiverReady : ({0}) NO={1}",
                     HexConverter.ToHexString(frame.data, true), frame.no);
                 m_runtime.Log(LogLevel.DEBUG, m_name, text);
             }
@@ -403,10 +428,17 @@ namespace OpenAX25_DuplexPhysicalLayer
             T091seq = T091.Stop();
             T105seq = T105.Stop();
             T107seq = T107.Stop();
-            if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_BUSY_Indication");
-            if (UpperEndpoint != null)
-                UpperEndpoint.Send(new PH_BUSY_Indication());
+            IL3Channel ep = UpperEndpoint; // Save pointer for later access
+            if (ep != null)
+            {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_BUSY_Indication");
+                ep.Send(new PH_BUSY_Indication());
+            }
+            else
+            {
+                m_runtime.Log(LogLevel.ERROR, m_name, "!!! UpperEndpoint is null");
+            }
             ReceiverState = ReceiverState_T.Receiving;
             // Chaining
             OnReceiving(frame);
@@ -419,23 +451,43 @@ namespace OpenAX25_DuplexPhysicalLayer
         /// <param name="expedited">Send expedited if set.</param>
         public void Send(IPrimitive p, bool expedited)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "ARRIVED(1): " + p.GetType().Name);
             lock (this)
             {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "ARRIVED(2): " + p.GetType().Name);
+                m_queue.Add(new Entry(p, expedited));
+            }
+        }
+
+        private void SynchronizedSend(IPrimitive p, bool expedited)
+        {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "PROCESSING(1): " + p.GetType().Name);
+            lock (this)
+            {
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "PROCESSING(2): " + p.GetType().Name);
                 if (!IsOpen)
+                {
+                    m_runtime.Log(LogLevel.WARNING, m_name, "RX: DATA DROP (Channel not open) : "
+                        + p.GetType().Name);
                     return;
+                }
                 switch (TransmitterState)
                 {
-                    case TransmitterState_T.TransmitterReady :
+                    case TransmitterState_T.TransmitterReady:
                         OnTransmitterReady(p, expedited);
                         break;
-                    case TransmitterState_T.TransmitterStart :
+                    case TransmitterState_T.TransmitterStart:
                         OnTransmitterStart(p, expedited);
                         break;
-                    case TransmitterState_T.Transmitting :
+                    case TransmitterState_T.Transmitting:
                         OnTransmitting(p, expedited);
                         break;
                 } // end switch //
-            }
+            } // end lock //
         }
 
         private void OnTransmitterReady(IPrimitive p, bool expedited)
@@ -450,8 +502,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                     case PhysicalLayerPrimitive_T.PH_SEIZE_Request_T :
                         T105seq = T105.Start(T105_V);
                         // Turn on transmitter
-        	            if (m_runtime.LogLevel >= LogLevel.DEBUG)
-				            m_runtime.Log(LogLevel.DEBUG, m_name, "Turn on transmitter");
+    		            m_runtime.Log(LogLevel.INFO, m_name, "Turn on transmitter");
                         TransmitterState = TransmitterState_T.TransmitterStart;
                         break;
                     case PhysicalLayerPrimitive_T.PH_RELEASE_Request_T :
@@ -502,7 +553,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                 {
                     case PhysicalLayerPrimitive_T.PH_SEIZE_Request_T:
                         if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                            m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_SEIZE_Confirm");
+                            m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_SEIZE_Confirm");
                         if (UpperEndpoint != null)
                             UpperEndpoint.Send(new PH_SEIZE_Confirm());
                         TransmitterState = TransmitterState_T.Transmitting;
@@ -511,8 +562,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                         Interrupted = false;
                         T107seq = T107.Stop();
                         // Turn off transmitter
-                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                            m_runtime.Log(LogLevel.DEBUG, m_name, "Turn off transmitter");
+                        m_runtime.Log(LogLevel.INFO, m_name, "Turn off transmitter");
                         TransmitterState = TransmitterState_T.TransmitterReady;
                         break;
                     case PhysicalLayerPrimitive_T.PH_DATA_Request_T:
@@ -540,16 +590,12 @@ namespace OpenAX25_DuplexPhysicalLayer
 
         private void SendFrame(AX25Frame frame, bool expedited)
         {
-            if (m_runtime.LogLevel >= LogLevel.DEBUG)
-            {
-                string text = String.Format(
-                    "SendFrame({0})", frame.ToString());
-                m_runtime.Log(LogLevel.DEBUG, m_name, text);
-            }
             if (m_target != null)
             {
                 L2Frame _frame = new L2Frame(
                     m_runtime.NewFrameNo(), expedited, frame.Octets, EndpointProperties);
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX frame : " + _frame.ToString());
                 m_target.ForwardFrame(_frame);
             }
         }
@@ -566,7 +612,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                 {
                     case ReceiverState_T.Receiving :
         	            if (m_runtime.LogLevel >= LogLevel.DEBUG)
-				            m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_QUIET_Indication");
+				            m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_QUIET_Indication");
                         if (UpperEndpoint != null)
                             UpperEndpoint.Send(new PH_QUIET_Indication());
                         ReceiverState = ReceiverState_T.ReceiverReady;
@@ -574,7 +620,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                     default :
                         break;
                 } // end switch //
-            }
+            } // end lock //
         }
 
         private void OnT105Callback()
@@ -591,7 +637,7 @@ namespace OpenAX25_DuplexPhysicalLayer
                         if (!Interrupted)
                         {
                             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                                m_runtime.Log(LogLevel.DEBUG, m_name, "=Send PH_SEIZE_Confirm");
+                                m_runtime.Log(LogLevel.DEBUG, m_name, "TX PH_SEIZE_Confirm");
                             if (UpperEndpoint != null)
                                 UpperEndpoint.Send(new PH_SEIZE_Confirm());
                         }
@@ -621,8 +667,8 @@ namespace OpenAX25_DuplexPhysicalLayer
                     case TransmitterState_T.Transmitting:
                         Interrupted = true;
                         // Turn off transmitter
-                        if (m_runtime.LogLevel >= LogLevel.DEBUG)
-				            m_runtime.Log(LogLevel.DEBUG, m_name, "Turn off transmitter");
+                        if (m_runtime.LogLevel >= LogLevel.INFO)
+				            m_runtime.Log(LogLevel.INFO, m_name, "Turn off transmitter");
                         TransmitterState = TransmitterState_T.TransmitterReady;
                         break;
                     default:
@@ -645,6 +691,39 @@ namespace OpenAX25_DuplexPhysicalLayer
         {
             ((DuplexPhysicalLayerChannel)userData).OnT107Callback();
         }
+
+        private void Run()
+        {
+            m_runtime.Log(LogLevel.INFO, m_name, "Consumer thread started");
+            while (true)
+            {
+                try
+                {
+                    Entry e = m_queue.Take();
+                    SynchronizedSend(e.p, e.expedited);
+                }
+                catch (Exception e)
+                {
+                    m_runtime.Log(LogLevel.ERROR, m_name, "Exception in consumer thread: " + e.Message);
+                }
+            }
+        }
+
+        private struct Entry
+        {
+            internal readonly IPrimitive p;
+            internal readonly bool expedited;
+
+            internal Entry(IPrimitive _p, bool _expedited)
+            {
+                p = _p;
+                expedited = _expedited;
+            }
+        }
+
+        private BlockingCollection<Entry> m_queue = new BlockingCollection<Entry>(
+            new ConcurrentQueue<Entry>());
+        private Thread m_thread = null;
 
     }
 }

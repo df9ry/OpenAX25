@@ -29,30 +29,23 @@ using OpenAX25Core;
 
 namespace OpenAX25_LinkMultiplexer
 {
-    internal sealed class ClientSession : IL3Channel
+    internal sealed class ClientSession : L3Channel
     {
-        internal readonly Runtime m_runtime = Runtime.Instance;
         internal readonly Guid m_id;
-        internal readonly string m_name;
-        internal readonly IDictionary<string, string> m_properties;
         internal readonly LinkMultiplexerChannel m_multiplexer;
         internal readonly ClientEndpoint m_endpoint;
-        internal readonly IL3Channel m_target;
         internal readonly L2Callsign m_callsign;
         internal readonly L2Callsign[] m_digis;
 
         internal ClientSession(
             LinkMultiplexerChannel multiplexer, ClientEndpoint endpoint, IL3Channel target,
             IDictionary<string, string> properties, string alias)
+                : base(properties, alias, true, target)
         {
             if (multiplexer == null)
                 throw new ArgumentNullException("multiplexer");
             if (endpoint == null)
                 throw new ArgumentNullException("endpoint");
-            if (target == null)
-                throw new ArgumentNullException("target");
-            if (properties == null)
-                throw new ArgumentNullException("properties");
             m_id = Guid.NewGuid();
             string _val;
             if (!properties.TryGetValue("RemoteAddr", out _val))
@@ -64,64 +57,16 @@ namespace OpenAX25_LinkMultiplexer
             m_digis = new L2Callsign[route.Length];
             for (int i = 0; i < route.Length; ++i)
                 m_digis[i] = new L2Callsign(route[i]);
-            m_name = endpoint.m_name + "/" + ((alias != null)?alias:target.Name);
             m_multiplexer = multiplexer;
             m_endpoint = endpoint;
-            m_target = target;
-            m_properties = properties;
         }
-
-        /// <summary>
-        /// Gets the name of the channel. This name have to be unique accross the
-        /// application and can never change. There is no interpretion or syntax check
-        /// performed.
-        /// </summary>
-        /// <value>
-        /// The unique name of this channel.
-        /// </value>
-        public string Name { get { return m_name; } }
-
-        /// <summary>
-        /// Gets the properties of this channel.
-        /// </summary>
-        /// <value>
-        /// The properties.
-        /// </value>
-        public IDictionary<string, string> Properties { get { return m_properties; } }
-
-        /// <summary>
-        /// Open the interface.
-        /// </summary>
-        public void Open()
-        {
-        }
-
-        /// <summary>
-        /// Close the interface.
-        /// </summary>
-        public void Close()
-        {
-        }
-
-        /// <summary>
-        /// Resets the channel. The data link is closed and reopened. All pending
-        /// data is withdrawn.
-        /// </summary>
-        public void Reset()
-        {
-        }
-
-        /// <summary>
-        /// Get the target channel.
-        /// </summary>
-        public IL3Channel L3Target { get { return m_target; } }
 
         /// <summary>
         /// Send a primitive over the channel.
         /// </summary>
         /// <param name="message">The primitive to send.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public void Send(IPrimitive message, bool expedited)
+        protected override void Input(IPrimitive message, bool expedited)
         {
             if (message == null)
                 throw new ArgumentNullException("message");
@@ -129,21 +74,22 @@ namespace OpenAX25_LinkMultiplexer
                 throw new Exception(String.Format("Invalid primitive of class {0}! Expected LinkMultiplexerPrimitive.",
                     message.GetType().Name));
             LinkMultiplexerPrimitive lmp = (LinkMultiplexerPrimitive)message;
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX " + lmp.LinkMultiplexerPrimitiveTypeName);
             m_multiplexer.Input(lmp, expedited, this);
         }
 
         internal void SendToPeer(IPrimitive message, bool expedited)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, m_name, "=Send " + message.GetType().Name);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX " + message.GetType().Name);
             m_target.Send(message, expedited);
         }
 
         private ClientSession()
+            : base(new Dictionary<string, string>(), "NULL", true, L3NullChannel.Instance)
         {
             m_id = Guid.Empty;
-            m_name = String.Empty;
-            m_properties = new Dictionary<string, string>();
             m_multiplexer = null;
             m_endpoint = null;
             m_target = null;

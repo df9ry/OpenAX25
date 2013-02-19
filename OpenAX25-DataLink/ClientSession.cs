@@ -27,15 +27,11 @@ using OpenAX25Core;
 
 namespace OpenAX25_DataLink
 {
-    internal sealed class ClientSession : IL3Channel
+    internal sealed class ClientSession : L3Channel
     {
-        internal readonly Runtime m_runtime = Runtime.Instance;
         internal readonly Guid m_id = Guid.NewGuid();
-        internal readonly string m_name;
-        internal readonly IDictionary<string, string> m_properties;
         internal readonly DataLinkChannel m_dataLink;
         internal readonly ClientEndpoint m_endpoint;
-        internal readonly IL3Channel m_target;
         internal readonly Configuration m_config;
         internal readonly DataLinkStateMachine m_machine;
         internal readonly L2Callsign m_defaultCallsign;
@@ -44,19 +40,17 @@ namespace OpenAX25_DataLink
         internal L2Callsign m_callsign;
         internal L2Callsign[] m_digis;
         internal IL3Channel m_linkMultiplexer = null;
+        private static int no;
 
         internal ClientSession(
             DataLinkChannel dataLink, ClientEndpoint endpoint, IL3Channel target,
             IDictionary<string, string> properties, string alias)
+            : base(properties, dataLink.m_name + ":" + alias, true, target)
         {
             if (dataLink == null)
                 throw new ArgumentNullException("multiplexer");
             if (endpoint == null)
                 throw new ArgumentNullException("endpoint");
-            if (target == null)
-                throw new ArgumentNullException("target");
-            if (properties == null)
-                throw new ArgumentNullException("properties");
             string _val;
             if (!properties.TryGetValue("RemoteAddr", out _val))
                 throw new MissingPropertyException("RemoteAddr");
@@ -70,11 +64,8 @@ namespace OpenAX25_DataLink
             for (int i = 0; i < route.Length; ++i)
                 m_defaultDigis[i] = new L2Callsign(route[i]);
             m_digis = m_defaultDigis;
-            m_name = endpoint.m_name + "/" + ((alias != null)?alias:target.Name);
             m_dataLink = dataLink;
             m_endpoint = endpoint;
-            m_target = target;
-            m_properties = properties;
             m_config = new Configuration(m_name);
             m_config.Header = new AX25Header(m_endpoint.m_callsign,
                 m_callsign, m_digis);
@@ -136,53 +127,48 @@ namespace OpenAX25_DataLink
                 {
                     throw new InvalidPropertyException("Version", e);
                 }
-            m_machine = new DataLinkStateMachine(m_config);
+            int n = NewNo();
+            string name = "**" + n + "**";
+            m_runtime.Log(LogLevel.INFO, m_name, "Assigning state machine " + name);
+            m_machine = new DataLinkStateMachine(m_config, name);
             m_machine.OnDataLinkOutputEvent +=
                 new OnDataLinkOutputEventHandler(OnDataLinkOutput);
             m_machine.OnLinkMultiplexerOutputEvent +=
                 new OnLinkMultiplexerOutputEventHandler(OnLinkMultiplexerOutput);
         }
 
-        /// <summary>
-        /// Gets the name of the channel. This name have to be unique accross the
-        /// application and can never change. There is no interpretion or syntax check
-        /// performed.
-        /// </summary>
-        /// <value>
-        /// The unique name of this channel.
-        /// </value>
-        public string Name { get { return m_name; } }
-
-        /// <summary>
-        /// Gets the properties of this channel.
-        /// </summary>
-        /// <value>
-        /// The properties.
-        /// </value>
-        public IDictionary<string, string> Properties { get { return m_properties; } }
+        private static int NewNo()
+        {
+            lock (typeof(ClientSession))
+            {
+                return ++ no;
+            }
+        }
 
         /// <summary>
         /// Open the interface.
         /// </summary>
-        public void Open()
+        public override void Open()
         {
             if (m_linkMultiplexer != null)
                 return;
             lock (this)
             {
                 m_linkMultiplexer = m_endpoint.m_remoteEndpoint.Bind(this, m_properties, m_name);
+                base.Open();
             } // end lock //
         }
 
         /// <summary>
         /// Close the interface.
         /// </summary>
-        public void Close()
+        public override void Close()
         {
             if (m_linkMultiplexer == null)
                 return;
             lock (this)
             {
+                base.Close();
                 try
                 {
                     m_endpoint.m_remoteEndpoint.Unbind(m_linkMultiplexer);
@@ -200,31 +186,18 @@ namespace OpenAX25_DataLink
         }
 
         /// <summary>
-        /// Resets the channel. The data link is closed and reopened. All pending
-        /// data is withdrawn.
-        /// </summary>
-        public void Reset()
-        {
-            Close();
-            Open();
-        }
-
-        /// <summary>
-        /// Get the target channel.
-        /// </summary>
-        public IL3Channel L3Target { get { return m_target; } }
-
-        /// <summary>
         /// Send a primitive over the channel.
         /// </summary>
         /// <param name="message">The primitive to send.</param>
         /// <param name="expedited">Send expedited if set.</param>
-        public void Send(IPrimitive message, bool expedited)
+        protected override void Input(IPrimitive message, bool expedited)
         {
             lock (this)
             {
                 if (message == null)
                     throw new ArgumentNullException("message");
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX " + message.GetType().Name);
                 if (message is PhysicalLayerPrimitive)
                     m_machine.Input((PhysicalLayerPrimitive)message);
                 else if (message is LinkMultiplexerPrimitive)
@@ -242,10 +215,8 @@ namespace OpenAX25_DataLink
         {
             lock (this)
             {
-                string msg = String.Format("=RECV {0} [{1}]", m_name, p.DataLinkPrimitiveTypeName);
-                m_runtime.Monitor(msg);
                 if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                    m_runtime.Log(LogLevel.DEBUG, m_name, msg);
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX " + p.DataLinkPrimitiveTypeName);
 
                 if (p.DataLinkPrimitiveType == DataLinkPrimitive_T.DL_CONNECT_Indication_T)
                 {
@@ -268,6 +239,8 @@ namespace OpenAX25_DataLink
 
                 if (m_target != null)
                     m_target.Send(p);
+                else
+                    m_runtime.Log(LogLevel.WARNING, m_name, "DATA DROP (Target is null)");
 
                 if (p.DataLinkPrimitiveType == DataLinkPrimitive_T.DL_DISCONNECT_Confirm_T)
                 {
@@ -281,17 +254,19 @@ namespace OpenAX25_DataLink
         {
             lock (this)
             {
-                if (m_runtime.LogLevel >= LogLevel.INFO)
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
                 {
                     if (p.LinkMultiplexerPrimitiveType == LinkMultiplexerPrimitive_T.LM_DATA_Request_T)
-                        m_runtime.Log(LogLevel.INFO, m_name, "Output LM_DATA_Request " +
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX LM_DATA_Request " +
                             ((LM_DATA_Request)p).Frame.ToString());
                     else
-                        m_runtime.Log(LogLevel.INFO, m_name, "Output " +
+                        m_runtime.Log(LogLevel.DEBUG, m_name, "TX " +
                             p.LinkMultiplexerPrimitiveTypeName);
                 }
                 if (m_linkMultiplexer != null)
                     m_linkMultiplexer.Send(p);
+                else
+                    m_runtime.Log(LogLevel.WARNING, m_name, "DATA DROP (LinkMultiplexer is null)");
             } // end lock //
         }
 

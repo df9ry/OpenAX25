@@ -23,13 +23,10 @@ namespace OpenAX25_Console
         private volatile bool m_active = false;
         private Object m_stateLock = new Object();
         private bool m_control = false;
-        private bool m_server_transmit_binary = false;
-        private bool m_client_transmit_binary = false;
-        private bool m_client_linemode = false;
-        private bool m_client_local_echo = false;
 
         internal Session(ConsoleChannel channel, Socket socket)
-            : base(GetProperties(channel.Properties), null, true)
+            : base(GetProperties(channel.Properties), channel.m_name + ":" +
+                ((IPEndPoint)socket.RemoteEndPoint).Port, true)
         {
             m_channel = channel;
             m_socket = socket;
@@ -47,12 +44,12 @@ namespace OpenAX25_Console
         {
             try
             {
+                base.Open();
                 lock (m_stateLock)
                 {
                     if (m_state == SessionState.CONNECTED)
                         return;
-                    m_runtime.Log(LogLevel.INFO, m_channel.Name, "Open session: " + m_id);
-                    base.Open();
+                    m_runtime.Log(LogLevel.INFO, m_name, "Open session: " + m_id);
                     m_target = m_channel.m_localEndpoint.Bind(this, Properties, String.Format("Console({0})", m_id));
                     if (m_target == null)
                         throw new Exception("Unable to bind");
@@ -67,15 +64,19 @@ namespace OpenAX25_Console
                     ConsoleChannel.ContinueRead(this);
 
                     byte[] telnetNegotiation = new byte[] {
-                        255, _DO,  1, // DO LOCAL_ECHO
-                        255, _DO, 34, // DO LINE_MODE
-                        255, _WILL,  0, // WILL TRANSMIT BINARY
-                        255, _DO,  0, // DO TRANSMIT BINARY
+                        255, _DO, 34, // IAC DO LINEMODE
+                        255, 250, 34, 1, 1, 255, 240, // IAC SB LINEMODE MODE 1 IAC SE
+                        255, _WOUNT, 1, // IAC WOUNT ECHO
+                        255, _DO,  1, // IAC DO ECHO
+                        255, _WILL,  0, // IAC WILL BINARY
+                        255, _DO,  0, // IAC DO BINARY
                     };
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO LOCAL_ECHO");
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO LINE_MODE");
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet WILL TRANSMIT_BINARY");
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Transmit Telnet DO TRANSMIT_BINARY");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet DO LINEMODE");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet LINEMODE MODE 1");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet WOUNT ECHO");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet DO ECHO");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet WILL BINARY");
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "TX : Telnet DO BINARY");
                     ConsoleChannel.SendToLocal(this, telnetNegotiation, telnetNegotiation.Length);
                 }
             }
@@ -90,7 +91,8 @@ namespace OpenAX25_Console
         {
             try
             {
-                m_runtime.Log(LogLevel.INFO, m_channel.Name, "Close session: " + m_id);
+                m_runtime.Log(LogLevel.INFO, m_name, "Close session: " + m_id);
+                base.Close();
                 lock (m_stateLock)
                 {
                     m_active = false;
@@ -116,8 +118,9 @@ namespace OpenAX25_Console
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
             {
                 byte[] data = new byte[nReceived];
-                m_runtime.Log(LogLevel.DEBUG, m_channel.Name,
-                    "Received on channel " + m_id + ": " + HexConverter.ToHexString(data, true));
+                Array.Copy(m_buffer1, 0, data, 0, nReceived);
+                m_runtime.Log(LogLevel.DEBUG, m_name,
+                    "RX : " + HexConverter.ToHexString(data, true));
             }
 
             try
@@ -263,135 +266,119 @@ namespace OpenAX25_Console
             }
             catch (Exception e)
             {
-                m_runtime.Log(LogLevel.ERROR, m_channel.Name, e.Message);
+                m_runtime.Log(LogLevel.ERROR, m_name, e.Message);
                 m_buffer2size = 0;
                 return false;
             }
         }
 
-        private void DONT(byte c) // I am request to don't do something
+        private void DONT(byte c)
         {
             switch (c)
             {
-                case 0: // Client requests server to don't transmit binary
-                    m_runtime.Log(LogLevel.DEBUG, m_name,
-                        "Client requests me to don't transmit binary.");
-                    if (m_client_transmit_binary)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Accept that.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _WOUNT, c }, 0);
-                        m_client_transmit_binary = false;
-                    }
+                case 0:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DONT transmit binary.");
+                    break;
+                case 1:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DONT local echo.");
+                    break;
+                case 3:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DONT suppress go ahead.");
+                    break;
+                case 34:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DONT linemode.");
                     break;
                 default:
                     // WON'T anything else.
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet DONT " + (int)c);
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DONT " + (int)c);
                     break;
             } // end switch //
         }
 
-        private void DO(byte c) // I am requested to do something
+        private void DO(byte c)
         {
             switch (c)
             {
-                case 0: // Client requests me to transmit binary
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Server shall transmit binary");
-                    if (!m_server_transmit_binary)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge request.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _WILL, c }, 0);
-                        m_server_transmit_binary = true;
-                    }
+                case 0:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DO transmit binary.");
                     break;
-                case 1: // Client requests me to local echo.
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "  Refuse request.");
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "  Deny.");
-                    ConsoleChannel.SendToLocal(this, new byte[] { 255, _WOUNT, c }, 3);
+                case 1:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DO local echo.");
+                    break;
+                case 3:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DO suppress go ahead.");
+                    break;
+                case 34:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet DO linemode.");
                     break;
                 default:
                     // DON'T anything else.
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet DO " + (int)c);
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "  Deny.");
-                    ConsoleChannel.SendToLocal(this, new byte[] { 255, _WOUNT, c }, 3);
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet  DO " + (int)c);
                     break;
             } // end switch //
         }
 
-        private void WOUNT(byte c) // The peer do not want to do something
+        private void WOUNT(byte c)
         {
             switch (c)
             {
-                case 0: // Client don't like to transmit binary.
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Client don't like to transmit binary");
-                    if (m_client_transmit_binary)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge denial.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _DONT, c }, 3);
-                        m_client_transmit_binary = false;
-                    }
+                case 0:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WOUNT transmit binary.");
                     break;
-                case 1: // Client don't like to local echo
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Client don't like to local echo");
-                    if (m_client_local_echo)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge denial.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _DONT, c }, 3);
-                        m_client_local_echo = false;
-                    }
+                case 1:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WOUNT local echo.");
                     break;
-                case 34: // Client don't like to do line mode
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Client don't like to line mode");
-                    if (m_client_linemode)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge denial.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _DONT, c }, 3);
-                    }
+                case 3:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WOUNT suppress go ahead");
+                    break;
+                case 34:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WOUNT linemode");
                     break;
                 default:
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet WOUNT " + (int)c);
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet  WOUNT " + (int)c);
                     break;
             } // end switch //
         }
 
-        private void WILL(byte c) // The peer do want to do something
+        private void WILL(byte c)
         {
             switch (c)
             {
-                case 0: // Client agreed to transmit binary
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Client likes to transmit binary");
-                    if (!m_client_transmit_binary)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge request.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _DO, c }, 3);
-                        m_client_transmit_binary = true;
-                    }
+                case 0:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WILL transmit binary");
                     break;
-                case 1: // Client agreed to local echo
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Client likes to local echo");
-                    if (!m_client_local_echo)
-                    {
-                        m_runtime.Log(LogLevel.DEBUG, m_name, "  Acknowledge request.");
-                        ConsoleChannel.SendToLocal(this, new byte[] { 255, _DO, c }, 3);
-                    }
+                case 1:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WILL local echo");
+                    break;
+                case 3:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WILL supress go ahead");
+                    break;
+                case 34:
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet WILL linemode");
                     break;
                 default:
                     // DON'T anything else.
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "Received Telnet WILL " + (int)c);
-                    m_runtime.Log(LogLevel.DEBUG, m_name, "  Deny.");
-                    ConsoleChannel.SendToLocal(this, new byte[] { 255, _DONT, c }, 3);
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "RX : Telnet  WILL " + (int)c);
                     break;
             } // end switch //
         }
 
         protected override void Input(IPrimitive _p, bool expedited)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + _p.GetType().Name);
             if (!m_active)
+            {
+                m_runtime.Log(LogLevel.WARNING, m_name, "DROP (channel inactive) : "
+                    + _p.GetType().Name);
                 return;
+            }
             bool close = false;
             lock (m_stateLock)
             {
                 if (!(_p is DataLinkPrimitive))
-                    throw new Exception("Expected DataLinkPrimitive. Was: " + _p.GetType().Name);
+                    throw new Exception("Expected DataLinkPrimitive. Was: "
+                        + _p.GetType().Name);
                 DataLinkPrimitive p = (DataLinkPrimitive)_p;
                 switch (p.DataLinkPrimitiveType)
                 {
@@ -432,7 +419,14 @@ namespace OpenAX25_Console
         private void ReceiveFromRemote(byte[] data, bool control)
         {
             if (data == null)
+            {
+                m_runtime.Log(LogLevel.WARNING, m_name, "RX : <null> (Ignored)");
                 return;
+            }
+
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + HexConverter.ToHexString(data, true));
+
             int length = data.Length;
             if (length < 2)
                 return;
@@ -507,10 +501,26 @@ namespace OpenAX25_Console
 
         private void SendToRemote(byte[] data, int length)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+            {
+                byte[] _data = new byte[length];
+                Array.Copy(data, 0, _data, 0, length);
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX : "
+                    + HexConverter.ToHexString(_data, true));
+            }
             if (!m_active)
+            {
+                byte[] _data = new byte[length];
+                Array.Copy(data, 0, _data, 0, length);
+                m_runtime.Log(LogLevel.WARNING, m_name, "TX (channel not active, suppressed) : "
+                    + HexConverter.ToHexString(_data, true));
                 return;
+            }
             if (length == 0)
+            {
+                m_runtime.Log(LogLevel.WARNING, m_name, "TX (empty, suppresed)");
                 return;
+            }
             bool isControl = (data[0] == 0x1B); // ESC: Very simple terminal protocol ;-)
             lock (m_stateLock)
             {

@@ -50,6 +50,8 @@ namespace OpenAX25_DataLink
                 if (value == _v_s)
                     return;
                 _v_s = value % (int)m_modulo;
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "V(S)=" + _v_s);
                 lock (IFrameQueue)
                 {
                     Monitor.PulseAll(IFrameQueue);
@@ -74,6 +76,8 @@ namespace OpenAX25_DataLink
                 if (value == _v_a)
                     return;
                 _v_a = value % (int)m_modulo;
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "V(A)=" + _v_a);
                 lock (IFrameQueue)
                 {
                     Monitor.PulseAll(IFrameQueue);
@@ -97,6 +101,8 @@ namespace OpenAX25_DataLink
             set
             {
                 _v_r = value % (int)m_modulo;
+                if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "V(R)=" + _v_r);
             }
         }
         private int _v_r = 0;
@@ -119,7 +125,8 @@ namespace OpenAX25_DataLink
         /// <summary>
         /// Window Size Receive.
         /// </summary>
-        private int k = 4;
+        //private int k = 4;
+        private int k = 7;
 
         /// <summary>
         /// Buffer of information to be transmitted in I frames.
@@ -158,6 +165,8 @@ namespace OpenAX25_DataLink
             }
             set
             {
+                if ((m_runtime.LogLevel >= LogLevel.DEBUG) && (m_state != value))
+                    m_runtime.Log(LogLevel.DEBUG, m_name, "State " + m_state + "-->" + value);
                 m_state = value;
                 if (IFrameQueue.Count > 0)
                     IFramePopOffQueue(IFrameQueue.Dequeue());
@@ -275,9 +284,12 @@ namespace OpenAX25_DataLink
         private long T1seq = -1;
         private long T3seq = -1;
 
-        internal DataLinkStateMachine(Configuration config)
+        private readonly string m_name;
+
+        internal DataLinkStateMachine(Configuration config, string name)
         {
             m_config = config;
+            m_name = name;
             m_version = config.Initial_version;
             T1 = new AX25Timer(this, new TimerCallback(OnT1Callback));
             T3 = new AX25Timer(this, new TimerCallback(OnT3Callback));
@@ -285,6 +297,8 @@ namespace OpenAX25_DataLink
 
         internal void Input(PhysicalLayerPrimitive p)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + p.PhysicalLayerPrimitiveTypeName);
             lock (this)
             {
                 switch (p.PhysicalLayerPrimitiveType)
@@ -305,6 +319,8 @@ namespace OpenAX25_DataLink
 
         internal void Input(DataLinkPrimitive p)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + p.DataLinkPrimitiveTypeName);
             lock (this)
             {
                 switch (State)
@@ -321,13 +337,15 @@ namespace OpenAX25_DataLink
 
         internal void Input(LinkMultiplexerPrimitive p)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + p.LinkMultiplexerPrimitiveTypeName);
             lock (this)
             {
                 if (p.LinkMultiplexerPrimitiveType == LinkMultiplexerPrimitive_T.LM_DATA_Indication_T)
                 {
                     LM_DATA_Indication ldi = (LM_DATA_Indication)p;
                     AX25Frame f = ldi.Frame;
-                    m_runtime.Monitor("<-- " + f.ToString());
+                    m_runtime.Monitor("DL[RX] " + f.ToString());
                     Input(f.Payload);
                 }
                 else
@@ -344,6 +362,8 @@ namespace OpenAX25_DataLink
 
         internal void Input(AX25Payload f)
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "RX : " + f.ToString());
             lock (this)
             {
                 if (f is AX25_I)
@@ -370,9 +390,9 @@ namespace OpenAX25_DataLink
                     N_R = -1;
                     N_S = -1;
                 }
-                TraceLog("%INP[" + f.ToString() + "]");
-                TraceLog(
-                    "::::: V_A=" + V_A + ",N_R=" + N_R + ",V_S=" + V_S + ",V_R=" + V_R + ",N_S=" + N_S);
+                //TraceLog("%INP[" + f.ToString() + "]");
+                //TraceLog(
+                //    "::::: V_A=" + V_A + ",N_R=" + N_R + ",V_S=" + V_S + ",V_R=" + V_R + ",N_S=" + N_S);
                 switch (State)
                 {
                     case State_T.Disconnected: Disconnected(f); break;
@@ -2177,6 +2197,7 @@ namespace OpenAX25_DataLink
 
         private bool GT(int op1, int op2)
         {
+            int _op1 = op1, _op2 = op2;
             int upper = (_v_a + k - 1) % (int)m_modulo;
             if (upper >= _v_a)
             {
@@ -2192,6 +2213,8 @@ namespace OpenAX25_DataLink
                 if (op2 <= upper)
                     op2 += (int)m_modulo;
             }
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, String.Format("~~~ ({0}>{1}):{2}", _op1, _op2, (op1 > op2)));
             return (op1 > op2);
         }
 
@@ -2203,25 +2226,33 @@ namespace OpenAX25_DataLink
         private void OnAX25OutputEvent(AX25Payload payload)
         {
             AX25Frame frame = new AX25Frame(m_config.Header, payload);
-            m_runtime.Monitor("--> " + frame.ToString());
+            m_runtime.Monitor("DL[TX] " + frame.ToString());
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TX : " + frame.ToString());
             OnLinkMultiplexerOutputEvent(new LM_DATA_Request(frame));
         }
 
         private void OnAX25OutputExpeditedEvent(AX25Payload payload)
         {
             AX25Frame frame = new AX25Frame(m_config.Header, payload);
-            m_runtime.Monitor("==> " + frame.ToString());
+            m_runtime.Monitor("DL[TE] " + frame.ToString());
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "TE : " + frame.ToString());
             OnLinkMultiplexerOutputEvent(new LM_EXPEDITED_DATA_Request(frame));
         }
 
         private void ResumeAllTimers()
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "ResumeAllTimers()");
             T1.Suspend(false);
             T3.Suspend(false);
         }
 
         private void SuspendAllTimers()
         {
+            if (m_runtime.LogLevel >= LogLevel.DEBUG)
+                m_runtime.Log(LogLevel.DEBUG, m_name, "SuspendAllTimers()");
             T1.Suspend(true);
             T3.Suspend(true);
         }
@@ -2229,7 +2260,7 @@ namespace OpenAX25_DataLink
         private void TraceLog(string message)
         {
             if (m_runtime.LogLevel >= LogLevel.DEBUG)
-                m_runtime.Log(LogLevel.DEBUG, "DataLinkStateMachine", message);
+                m_runtime.Log(LogLevel.DEBUG, m_name, message);
         }
 
     }
