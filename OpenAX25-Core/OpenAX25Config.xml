@@ -23,7 +23,7 @@
       <Channel name="PROTO" class="PROTO" target="Router" open="true">
       </Channel>
       <Channel name="DB0FHN" class="AXUDP" target="Router" open="true">
-			  <Property name="Port">9300</Property>
+			  <Property name="Port">93</Property>
 			  <Property name="Host">db0fhn.efi.fh-nuernberg.de</Property>
 			  <Property name="Mode">Client</Property>
 		  </Channel>
